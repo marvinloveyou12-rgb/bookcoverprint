@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, send_from_directory, Response
 import sqlite3
 import requests
 import os
+import urllib.parse
 
 app = Flask(__name__)
 
@@ -15,14 +16,14 @@ ALLOWED_IMG_HOSTS = (
     'https://books.google',
     'https://shopping-phinf.pstatic.net',
     'https://bookthumb-phinf.pstatic.net',
-    'https://thumbnail.image.rakuten.co.jp',
 )
 
-# ── DB 초기화 ───────────────────────────────────────────
+
 def get_db():
     db = sqlite3.connect(DB_PATH)
     db.row_factory = sqlite3.Row
     return db
+
 
 def init_db():
     db = get_db()
@@ -41,18 +42,20 @@ def init_db():
     db.commit()
     db.close()
 
+
 init_db()
 
-# ── 정적 파일 서빙 ──────────────────────────────────────
+
 @app.route('/')
 def index():
     return send_from_directory(BASE_DIR, 'index.html')
+
 
 @app.route('/books.html')
 def books():
     return send_from_directory(BASE_DIR, 'books.html')
 
-# ── 회원가입 ────────────────────────────────────────────
+
 @app.route('/api/register', methods=['POST'])
 def register():
     data     = request.get_json()
@@ -77,11 +80,11 @@ def register():
         return jsonify(success=True, message='회원가입이 완료되었습니다!')
     except sqlite3.IntegrityError as e:
         field = '아이디' if 'user_id' in str(e) else '이메일'
-        return jsonify(success=False, message=f'이미 사용 중인 {field}입니다.'), 400
+        return jsonify(success=False, message='이미 사용 중인 ' + field + '입니다.'), 400
     except Exception:
         return jsonify(success=False, message='서버 오류가 발생했습니다.'), 500
 
-# ── 유저 목록 ────────────────────────────────────────────
+
 @app.route('/api/users')
 def users():
     db   = get_db()
@@ -89,26 +92,25 @@ def users():
     db.close()
     return jsonify([dict(r) for r in rows])
 
-# ── 이미지 프록시 (Google Books + 네이버 Pstatic) ────────
+
 @app.route('/api/image-proxy')
 def image_proxy():
     url = request.args.get('url', '')
     if not url or not any(url.startswith(h) for h in ALLOWED_IMG_HOSTS):
-        return '허용되지 않는 URL입니다.', 400
+        return 'Not allowed', 400
     try:
         resp = requests.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
         if not resp.ok:
-            return '이미지를 가져올 수 없습니다.', 502
-        content_type = resp.headers.get('content-type', 'image/jpeg')
+            return 'Error', 502
         return Response(
             resp.content,
-            content_type=content_type,
+            content_type=resp.headers.get('content-type', 'image/jpeg'),
             headers={'Cache-Control': 'public, max-age=86400'}
         )
     except Exception:
-        return '프록시 오류', 500
+        return 'Proxy error', 500
 
-# ── 네이버 도서 검색 프록시 ───────────────────────────────
+
 @app.route('/api/naver-books')
 def naver_books():
     q       = request.args.get('q', '').strip()
@@ -117,14 +119,14 @@ def naver_books():
     sort    = request.args.get('sort', 'date')
 
     if not q:
-        return jsonify(error='q 파라미터 필요'), 400
+        return jsonify(error='q parameter required'), 400
 
     api_url = (
-        f'https://openapi.naver.com/v1/search/book.json'
-        f'?query={requests.utils.quote(q)}'
-        f'&start={start}'
-        f'&display={display}'
-        f'&sort={sort}'
+        'https://openapi.naver.com/v1/search/book.json'
+        '?query=' + urllib.parse.quote(q) +
+        '&start=' + start +
+        '&display=' + display +
+        '&sort=' + sort
     )
     try:
         resp = requests.get(api_url, headers={
@@ -133,7 +135,8 @@ def naver_books():
         }, timeout=10)
         return Response(resp.content, status=resp.status_code, content_type='application/json')
     except Exception:
-        return jsonify(error='네이버 API 연결 오류'), 500
+        return jsonify(error='Naver API error'), 500
+
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)
