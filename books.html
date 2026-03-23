@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>책 표지 인쇄</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; }
+
+    /* ── 헤더 ── */
+    header {
+      background: white;
+      padding: 14px 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-row1 {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    header h1 { font-size: 18px; white-space: nowrap; color: #222; }
+
+    .home-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      background: #f0f2f5;
+      color: #555;
+      font-size: 18px;
+      text-decoration: none;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .home-btn:hover { background: #e0e4ea; color: #222; }
+
+    .search-bar { display: flex; gap: 8px; flex: 1; min-width: 220px; }
+    .search-bar input {
+      flex: 1;
+      padding: 8px 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+    }
+    .search-bar input:focus { border-color: #4f7ef8; }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .toolbar select {
+      padding: 7px 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      background: white;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .btn-blue   { background: #4f7ef8; color: white; }
+    .btn-blue:hover   { background: #3a66d4; }
+    .btn-green  { background: #27ae60; color: white; }
+    .btn-green:hover  { background: #1e8449; }
+    .btn-orange { background: #e67e22; color: white; }
+    .btn-orange:hover { background: #ca6f1e; }
+    .btn-gray   { background: #eee; color: #444; }
+    .btn-gray:hover   { background: #ddd; }
+    .btn-adv    { background: #f5f5f5; color: #555; border: 1px solid #ddd; }
+    .btn-adv:hover    { background: #e8e8e8; }
+    .btn-adv.open     { background: #e8eeff; color: #4f7ef8; border-color: #4f7ef8; }
+    .btn:disabled { background: #ccc !important; cursor: not-allowed; }
+
+    .sel-count { font-size: 13px; color: #888; white-space: nowrap; }
+
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      color: #555;
+      cursor: pointer;
+      white-space: nowrap;
+      padding: 7px 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: white;
+      user-select: none;
+    }
+    .toggle-label:hover { background: #f5f5f5; }
+    .toggle-label input { cursor: pointer; accent-color: #4f7ef8; }
+
+    /* ── 고급 검색 패널 ── */
+    .adv-panel {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+      background: #f8f9ff;
+      border-top: 1px solid transparent;
+    }
+    .adv-panel.open {
+      max-height: 200px;
+      padding: 14px 28px;
+      border-top-color: #e0e6ff;
+    }
+    .adv-grid {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .adv-field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
+    .adv-field label { font-size: 11px; font-weight: 600; color: #777; }
+    .adv-field input {
+      padding: 7px 11px;
+      border: 1px solid #ddd;
+      border-radius: 7px;
+      font-size: 13px;
+      outline: none;
+      background: white;
+    }
+    .adv-field input:focus { border-color: #4f7ef8; }
+    .adv-tip {
+      font-size: 11px;
+      color: #999;
+      align-self: flex-end;
+      padding-bottom: 8px;
+      white-space: nowrap;
+    }
+
+    /* ── 메인 ── */
+    main { padding: 20px 28px; }
+
+    .result-info {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    .status {
+      text-align: center;
+      color: #aaa;
+      font-size: 14px;
+      padding: 70px 0;
+    }
+
+    /* ── 그리드 ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 16px;
+    }
+
+    .book-card {
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      position: relative;
+      user-select: none;
+    }
+    .book-card:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.14); }
+    .book-card.selected { outline: 3px solid #4f7ef8; }
+
+    /* 선택 배지 (순번 숫자) */
+    .book-card .sel-badge {
+      position: absolute;
+      top: 7px; right: 7px;
+      min-width: 26px; height: 26px;
+      padding: 0 5px;
+      background: #4f7ef8;
+      border-radius: 13px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      font-weight: 700;
+      z-index: 2;
+      line-height: 1;
+    }
+    .book-card.selected .sel-badge { display: flex; }
+
+    /* 빠른 선택 버튼 (호버 시) */
+    .book-card .quick-sel {
+      position: absolute;
+      top: 7px; left: 7px;
+      width: 26px; height: 26px;
+      background: rgba(255,255,255,0.9);
+      border: 2px solid #ccc;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #aaa;
+      font-size: 11px;
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 2;
+    }
+    .book-card:hover .quick-sel { opacity: 1; }
+    .book-card.selected .quick-sel {
+      background: #4f7ef8;
+      border-color: #4f7ef8;
+      color: white;
+      opacity: 1;
+    }
+
+    .book-card img {
+      width: 100%;
+      aspect-ratio: 2/3;
+      object-fit: cover;
+      display: block;
+      background: #e8e8e8;
+    }
+    .book-card .no-img {
+      width: 100%;
+      aspect-ratio: 2/3;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 11px;
+      text-align: center;
+      padding: 12px;
+      line-height: 1.5;
+    }
+    .book-card .info { padding: 8px 10px 10px; }
+    .book-card .title {
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .book-card .author {
+      font-size: 11px;
+      color: #999;
+      margin-top: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .book-card .year {
+      font-size: 10px;
+      color: #bbb;
+      margin-top: 2px;
+    }
+
+    /* ── 페이지네이션 ── */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 4px;
+      margin: 32px 0 8px;
+      flex-wrap: wrap;
+    }
+    .page-btn {
+      min-width: 36px;
+      height: 36px;
+      padding: 0 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: white;
+      color: #444;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .page-btn:hover:not(:disabled):not(.active) { background: #f0f4ff; border-color: #4f7ef8; color: #4f7ef8; }
+    .page-btn.active { background: #4f7ef8; border-color: #4f7ef8; color: white; font-weight: 700; }
+    .page-btn:disabled { color: #ccc; cursor: not-allowed; }
+    .page-ellipsis { font-size: 14px; color: #aaa; padding: 0 4px; line-height: 36px; }
+
+    /* ── 상세 모달 ── */
+    .modal-wrap {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-wrap.show { display: flex; }
+
+    .modal-box {
+      background: white;
+      border-radius: 16px;
+      width: 100%;
+      max-width: 700px;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.25);
+    }
+    .modal-close {
+      position: sticky;
+      top: 12px;
+      float: right;
+      margin: 12px 12px 0 0;
+      width: 32px; height: 32px;
+      border: none;
+      background: #eee;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+    }
+    .modal-close:hover { background: #ddd; }
+
+    .modal-body {
+      display: flex;
+      gap: 24px;
+      padding: 24px;
+      padding-top: 8px;
+    }
+    .modal-cover {
+      flex-shrink: 0;
+      width: 160px;
+    }
+    .modal-cover img {
+      width: 100%;
+      border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      display: block;
+    }
+    .modal-cover .no-cover {
+      width: 100%;
+      aspect-ratio: 2/3;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 13px;
+      text-align: center;
+      padding: 12px;
+      line-height: 1.5;
+    }
+    .modal-cover .sel-toggle {
+      width: 100%;
+      margin-top: 12px;
+      padding: 9px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #4f7ef8;
+      color: white;
+      transition: background 0.15s;
+    }
+    .modal-cover .sel-toggle:hover { background: #3a66d4; }
+    .modal-cover .sel-toggle.selected { background: #eee; color: #444; }
+    .modal-cover .sel-toggle.selected:hover { background: #ddd; }
+
+    .modal-info { flex: 1; min-width: 0; }
+    .modal-info h2 {
+      font-size: 19px;
+      color: #111;
+      line-height: 1.4;
+      margin-bottom: 4px;
+    }
+    .modal-info .subtitle {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 12px;
+    }
+    .info-row {
+      display: flex;
+      gap: 6px;
+      font-size: 13px;
+      margin-bottom: 7px;
+      align-items: baseline;
+    }
+    .info-label {
+      color: #999;
+      flex-shrink: 0;
+      width: 64px;
+    }
+    .info-val { color: #333; }
+    .info-val a { color: #4f7ef8; text-decoration: none; }
+    .info-val a:hover { text-decoration: underline; }
+
+    .divider { border: none; border-top: 1px solid #eee; margin: 14px 0; }
+
+    .desc-text {
+      font-size: 13px;
+      color: #555;
+      line-height: 1.7;
+    }
+    .desc-text.collapsed {
+      display: -webkit-box;
+      -webkit-line-clamp: 5;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .desc-more {
+      font-size: 12px;
+      color: #4f7ef8;
+      cursor: pointer;
+      margin-top: 4px;
+      display: inline-block;
+    }
+
+    .tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .tag {
+      background: #f0f4ff;
+      color: #4f7ef8;
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 11px;
+    }
+
+    /* ── 진행 모달 ── */
+    #progressWrap {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 400;
+      align-items: center;
+      justify-content: center;
+    }
+    #progressWrap.show { display: flex; }
+    .progress-box {
+      background: white;
+      border-radius: 14px;
+      padding: 32px 40px;
+      text-align: center;
+      min-width: 280px;
+    }
+    .progress-box p { font-size: 15px; margin-bottom: 16px; color: #333; }
+    .progress-bar-bg { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: #4f7ef8; border-radius: 4px; transition: width 0.2s; }
+
+    /* ── 인쇄 ── */
+    @media print {
+      header, .adv-panel, #detailModal, #progressWrap, .pagination, .result-info { display: none !important; }
+      body { background: white; }
+      main { padding: 0; }
+      .book-card { display: none !important; }
+      .print-sheet { display: block !important; page-break-after: always; }
+      .grid { display: none; }
+    }
+    .print-sheet { display: none; }
+  </style>
+</head>
+<body>
+
+<!-- ── 헤더 ── -->
+<header>
+  <div class="header-row1">
+    <a href="/" class="home-btn" title="홈으로">&#8592;</a>
+    <h1>📚 책 표지 인쇄</h1>
+    <div class="search-bar">
+      <input id="searchInput" type="text" placeholder="불리언 검색 가능: 파이썬 AND 머신러닝 NOT 입문"
+             onkeydown="if(event.key==='Enter') searchBooks()">
+      <button class="btn btn-blue" onclick="searchBooks()">검색</button>
+      <button class="btn btn-adv" id="advBtn" onclick="toggleAdv()">고급 ▾</button>
+    </div>
+  </div>
+  <div class="toolbar">
+    <select id="orderSelect">
+      <option value="newest" selected>최신순</option>
+      <option value="relevance">관련순</option>
+    </select>
+    <select id="langSelect">
+      <option value="">전체 언어</option>
+      <option value="ko" selected>한국어</option>
+      <option value="en">영어</option>
+      <option value="ja">일본어</option>
+      <option value="zh">중국어</option>
+    </select>
+    <label class="toggle-label">
+      <input type="checkbox" id="coverOnly" checked onchange="applyFilter()">
+      표지 있는 책만
+    </label>
+    <select id="sizeSelect">
+      <option value="130x188">46판 (130×188mm)</option>
+      <option value="148x210" selected>국판 / A5 (148×210mm)</option>
+      <option value="153x225">신국판 (153×225mm)</option>
+      <option value="182x257">B5 (182×257mm)</option>
+      <option value="210x297">A4 (210×297mm)</option>
+    </select>
+    <span class="sel-count" id="selCount">선택: 0개</span>
+    <button class="btn btn-gray" id="clearBtn" onclick="clearSel()" disabled>선택 초기화</button>
+    <button class="btn btn-orange" id="saveBtn"  onclick="saveJpgs()"    disabled>JPG 저장</button>
+    <button class="btn btn-green"  id="printBtn" onclick="printCovers()" disabled>인쇄</button>
+  </div>
+</header>
+
+<!-- ── 고급 검색 패널 ── -->
+<div class="adv-panel" id="advPanel">
+  <div class="adv-grid">
+    <div class="adv-field">
+      <label>저자 / 작가</label>
+      <input id="authorInput" type="text" placeholder="예: 김영하"
+             onkeydown="if(event.key==='Enter') searchBooks()">
+    </div>
+    <div class="adv-field">
+      <label>출판사</label>
+      <input id="publisherInput" type="text" placeholder="예: 민음사"
+             onkeydown="if(event.key==='Enter') searchBooks()">
+    </div>
+    <div class="adv-field">
+      <label>주제어 / 카테고리</label>
+      <input id="subjectInput" type="text" placeholder="예: 소설, fiction"
+             onkeydown="if(event.key==='Enter') searchBooks()">
+    </div>
+    <div class="adv-tip">AND · OR · NOT 연산자 지원</div>
+  </div>
+</div>
+
+<!-- ── 메인 ── -->
+<main>
+  <div class="result-info" id="resultInfo"></div>
+  <div class="status" id="status">검색어를 입력하여 책을 찾아보세요.</div>
+  <div class="grid" id="grid"></div>
+  <div class="pagination" id="pagination"></div>
+  <div id="printArea"></div>
+</main>
+
+<!-- ── 상세 모달 ── -->
+<div class="modal-wrap" id="detailModal" onclick="onModalBg(event)">
+  <div class="modal-box" id="modalBox">
+    <button class="modal-close" onclick="closeDetail()">✕</button>
+    <div class="modal-body">
+      <div class="modal-cover">
+        <div id="detailCoverWrap"></div>
+        <button class="sel-toggle" id="detailSelBtn" onclick="toggleDetailSel()">+ 선택 추가</button>
+      </div>
+      <div class="modal-info">
+        <h2 id="detailTitle"></h2>
+        <div class="subtitle" id="detailSubtitle"></div>
+
+        <div class="info-row"><span class="info-label">저자</span><span class="info-val" id="detailAuthors"></span></div>
+        <div class="info-row"><span class="info-label">출판사</span><span class="info-val" id="detailPublisher"></span></div>
+        <div class="info-row"><span class="info-label">출판일</span><span class="info-val" id="detailDate"></span></div>
+        <div class="info-row"><span class="info-label">페이지</span><span class="info-val" id="detailPages"></span></div>
+        <div class="info-row"><span class="info-label">언어</span><span class="info-val" id="detailLang"></span></div>
+        <div class="info-row"><span class="info-label">ISBN</span><span class="info-val" id="detailIsbn"></span></div>
+        <div class="info-row"><span class="info-label">링크</span><span class="info-val" id="detailLink"></span></div>
+
+        <hr class="divider">
+
+        <div class="info-row" id="detailCatRow" style="display:none">
+          <span class="info-label">분류</span>
+          <div class="tag-list" id="detailCategories"></div>
+        </div>
+
+        <div id="descWrap" style="display:none">
+          <div class="desc-text collapsed" id="detailDesc"></div>
+          <span class="desc-more" id="descMoreBtn" onclick="toggleDesc()">더 보기 ▾</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 진행 모달 ── -->
+<div id="progressWrap">
+  <div class="progress-box">
+    <p id="progressText">이미지 처리 중...</p>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const PER_PAGE = 40;
+  const MAX_API  = 1000;
+
+  let books        = [];
+  let totalItems   = 0;
+  let currentPage  = 1;
+  let lastQuery    = '';
+  let lastOrder    = 'newest';
+  let lastLang     = 'ko';
+  let detailIdx    = -1;
+  let selectedList = []; // 선택 순서 보존 배열
+
+  // ── 고급 검색 토글 ────────────────────────────────────
+  function toggleAdv() {
+    const panel = document.getElementById('advPanel');
+    const btn   = document.getElementById('advBtn');
+    const open  = panel.classList.toggle('open');
+    btn.classList.toggle('open', open);
+    btn.textContent = open ? '고급 ▴' : '고급 ▾';
+  }
+
+  // ── 쿼리 빌드 (불리언 + 필드 검색) ──────────────────
+  function buildQuery() {
+    const main      = document.getElementById('searchInput').value.trim();
+    const author    = document.getElementById('authorInput').value.trim();
+    const publisher = document.getElementById('publisherInput').value.trim();
+    const subject   = document.getElementById('subjectInput').value.trim();
+
+    const parts = [];
+
+    // 불리언 연산자 변환: AND→+ OR→| NOT→-
+    if (main) {
+      const q = main
+        .replace(/\s+AND\s+/gi,  '+')
+        .replace(/\s+OR\s+/gi,   '|')
+        .replace(/\s+NOT\s+(\S+)/gi, (_, w) => `-${w}`);
+      parts.push(q);
+    }
+
+    if (author)    parts.push(`inauthor:${author}`);
+    if (publisher) parts.push(`inpublisher:${publisher}`);
+    if (subject)   parts.push(`subject:${subject}`);
+
+    return parts.join('+') || '';
+  }
+
+  // ── 검색 (새 검색) ───────────────────────────────────
+  async function searchBooks() {
+    const q     = buildQuery();
+    const order = document.getElementById('orderSelect').value;
+    const lang  = document.getElementById('langSelect').value;
+    if (!q) return;
+
+    lastQuery    = q;
+    lastOrder    = order;
+    lastLang     = lang;
+    currentPage  = 1;
+    selectedList = [];
+    updateUI();
+
+    await loadPage(1);
+  }
+
+  // ── 표지 필터 재적용 (필터 토글 시) ─────────────────
+  function applyFilter() {
+    document.getElementById('grid').innerHTML = '';
+    selectedList = [];
+    updateUI();
+    const coverOnly = document.getElementById('coverOnly').checked;
+    books.forEach((item, i) => {
+      if (coverOnly && !getRawImg(item.volumeInfo)) return;
+      renderCard(item, i);
+    });
+  }
+
+  // ── 관련성 점수 계산 ─────────────────────────────────
+  function relevanceScore(item, rawTerms) {
+    const v = item.volumeInfo;
+    const titleText  = (v.title || '').toLowerCase();
+    const authorText = (v.authors || []).join(' ').toLowerCase();
+    const pubText    = (v.publisher || '').toLowerCase();
+    const catText    = (v.categories || []).join(' ').toLowerCase();
+
+    let score = 0;
+    for (const t of rawTerms) {
+      if (titleText.includes(t))  score += 4;
+      if (authorText.includes(t)) score += 3;
+      if (pubText.includes(t))    score += 2;
+      if (catText.includes(t))    score += 1;
+    }
+    // 표지 있으면 가산점
+    if (getRawImg(v)) score += 2;
+    return score;
+  }
+
+  // ── 검색어에서 순수 단어 추출 ────────────────────────
+  function extractTerms(query) {
+    return query
+      .replace(/in\w+:[^\s+|]+/g, '')   // 필드 연산자 제거
+      .replace(/[+|]/g, ' ')
+      .split(/\s+/)
+      .map(t => t.replace(/^-/, '').toLowerCase())
+      .filter(t => t.length >= 2 && !/^(and|or|not)$/i.test(t));
+  }
+
+  // ── 네이버 결과 → 공통 형식 변환 ───────────────────────
+  function normalizeNaver(item) {
+    const strip = s => (s || '').replace(/<[^>]+>/g, '').trim();
+    const pd    = item.pubdate || '';
+    return {
+      _source: 'naver',
+      volumeInfo: {
+        title:       strip(item.title),
+        authors:     strip(item.author).split('|').map(a => a.trim()).filter(Boolean),
+        publisher:   strip(item.publisher),
+        publishedDate: pd.length >= 8
+          ? `${pd.slice(0,4)}-${pd.slice(4,6)}-${pd.slice(6,8)}`
+          : pd.slice(0, 4),
+        description: strip(item.description),
+        imageLinks:  item.image ? { thumbnail: item.image } : {},
+        industryIdentifiers: (item.isbn || '').trim().split(/\s+/).filter(Boolean)
+          .map((id, i) => ({ type: i === 0 ? 'ISBN_10' : 'ISBN_13', identifier: id })),
+        infoLink:    item.link,
+        categories:  [],
+        language:    'ko',
+      }
+    };
+  }
+
+  // ── ISBN 기반 중복 제거 병합 ─────────────────────────
+  function mergeResults(naverItems, googleItems) {
+    const seen = new Set();
+    const result = [];
+    for (const item of [...naverItems, ...googleItems]) {
+      const ids = (item.volumeInfo.industryIdentifiers || []).map(x => x.identifier);
+      const key = ids.length ? ids[0] : (item.volumeInfo.title || '').toLowerCase();
+      if (key && seen.has(key)) continue;
+      if (key) seen.add(key);
+      result.push(item);
+    }
+    return result;
+  }
+
+  // ── 페이지 로드 ──────────────────────────────────────
+  async function loadPage(page) {
+    currentPage = page;
+    selectedList = [];
+    document.getElementById('grid').innerHTML       = '';
+    document.getElementById('pagination').innerHTML = '';
+    document.getElementById('resultInfo').style.display = 'none';
+    setStatus('검색 중...');
+
+    const startIndex = (page - 1) * PER_PAGE;
+    const coverOnly  = document.getElementById('coverOnly').checked;
+    const naverStart = startIndex + 1;   // 네이버는 1-based
+    const naverSort  = lastOrder === 'newest' ? 'date' : 'sim';
+
+    try {
+      // Google Books + 네이버 도서 동시 요청
+      const [googleRes, naverRes] = await Promise.allSettled([
+        fetch(
+          `https://www.googleapis.com/books/v1/volumes`
+          + `?q=${encodeURIComponent(lastQuery)}`
+          + `&maxResults=${PER_PAGE}`
+          + `&startIndex=${startIndex}`
+          + `&orderBy=${lastOrder}`
+          + `&printType=books`
+          + (lastLang ? `&langRestrict=${lastLang}` : '')
+        ).then(r => r.json()),
+        fetch(
+          `/api/naver-books`
+          + `?q=${encodeURIComponent(lastQuery)}`
+          + `&start=${naverStart}`
+          + `&display=${PER_PAGE}`
+          + `&sort=${naverSort}`
+        ).then(r => r.json()),
+      ]);
+
+      const googleItems = googleRes.status === 'fulfilled'
+        ? (googleRes.value.items || []) : [];
+      const naverItems  = naverRes.status === 'fulfilled'
+        ? (naverRes.value.items || []).map(normalizeNaver) : [];
+
+      const googleTotal = googleRes.status === 'fulfilled'
+        ? (googleRes.value.totalItems || 0) : 0;
+      const naverTotal  = naverRes.status === 'fulfilled'
+        ? (naverRes.value.total || 0) : 0;
+
+      totalItems = Math.min(Math.max(googleTotal, naverTotal), MAX_API);
+
+      if (!googleItems.length && !naverItems.length) {
+        setStatus('검색 결과가 없습니다.');
+        return;
+      }
+
+      // 병합 → 정렬
+      const terms = extractTerms(lastQuery);
+      books = mergeResults(naverItems, googleItems);
+      if (lastOrder === 'newest') {
+        books.sort((a, b) => {
+          const da = (a.volumeInfo.publishedDate || '').replace(/-/g, '');
+          const db = (b.volumeInfo.publishedDate || '').replace(/-/g, '');
+          return db.localeCompare(da); // 최신순 (내림차순)
+        });
+      } else {
+        books.sort((a, b) => relevanceScore(b, terms) - relevanceScore(a, terms));
+      }
+
+      setStatus('');
+
+      // 표지 필터 적용 후 렌더
+      let shown = 0;
+      books.forEach((item, i) => {
+        if (coverOnly && !getRawImg(item.volumeInfo)) return;
+        renderCard(item, i);
+        shown++;
+      });
+
+      if (shown === 0) {
+        setStatus('표지가 있는 책이 없습니다. 필터를 해제해 보세요.');
+        return;
+      }
+
+      const from = startIndex + 1;
+      const to   = startIndex + books.length;
+      const info = document.getElementById('resultInfo');
+      const naverNote  = naverItems.length  ? ` · 네이버 ${naverItems.length}건` : '';
+      const googleNote = googleItems.length ? ` · Google ${googleItems.length}건` : '';
+      const coverNote  = coverOnly ? ` (표지 ${shown}권 표시)` : '';
+      info.textContent = `총 약 ${totalItems.toLocaleString()}개${naverNote}${googleNote}${coverNote}`;
+      info.style.display = 'block';
+
+      renderPagination();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    } catch (e) {
+      setStatus('검색 중 오류가 발생했습니다.');
+    }
+  }
+
+  function setStatus(msg) {
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.style.display = msg ? 'block' : 'none';
+  }
+
+  // ── 페이지네이션 ─────────────────────────────────────
+  function renderPagination() {
+    const totalPages = Math.ceil(totalItems / PER_PAGE);
+    if (totalPages <= 1) return;
+
+    const el = document.getElementById('pagination');
+    let html = '';
+
+    html += `<button class="page-btn" ${currentPage===1?'disabled':''} onclick="loadPage(${currentPage-1})">&#8249;</button>`;
+
+    let s = Math.max(1, currentPage - 2);
+    let e = Math.min(totalPages, s + 4);
+    if (e - s < 4) s = Math.max(1, e - 4);
+
+    if (s > 1) {
+      html += `<button class="page-btn" onclick="loadPage(1)">1</button>`;
+      if (s > 2) html += `<span class="page-ellipsis">…</span>`;
+    }
+    for (let i = s; i <= e; i++) {
+      html += `<button class="page-btn${i===currentPage?' active':''}" onclick="loadPage(${i})">${i}</button>`;
+    }
+    if (e < totalPages) {
+      if (e < totalPages - 1) html += `<span class="page-ellipsis">…</span>`;
+      html += `<button class="page-btn" onclick="loadPage(${totalPages})">${totalPages}</button>`;
+    }
+
+    html += `<button class="page-btn" ${currentPage===totalPages?'disabled':''} onclick="loadPage(${currentPage+1})">&#8250;</button>`;
+    el.innerHTML = html;
+  }
+
+  // ── 카드 렌더 ─────────────────────────────────────────
+  function renderCard(item, idx) {
+    const info    = item.volumeInfo;
+    const title   = info.title || '제목 없음';
+    const authors = info.authors?.join(', ') || '저자 미상';
+    const year    = info.publishedDate?.slice(0, 4) || '';
+    const cover   = proxyUrl(getRawImg(info));
+
+    const card = document.createElement('div');
+    card.className   = 'book-card';
+    card.dataset.idx = idx;
+
+    card.innerHTML = `
+      <div class="sel-badge"></div>
+      <div class="quick-sel" title="선택">✓</div>
+      ${cover
+        ? `<img src="${cover}" alt="${escHtml(title)}" loading="lazy">`
+        : `<div class="no-img">${escHtml(title)}</div>`}
+      <div class="info">
+        <div class="title">${escHtml(title)}</div>
+        <div class="author">${escHtml(authors)}</div>
+        ${year ? `<div class="year">${year}</div>` : ''}
+      </div>`;
+
+    // 클릭 영역 분리: quick-sel → 선택 토글 / 나머지 → 상세 보기
+    card.querySelector('.quick-sel').addEventListener('click', e => {
+      e.stopPropagation();
+      toggleSelect(idx);
+    });
+    card.addEventListener('click', () => openDetail(idx));
+
+    document.getElementById('grid').appendChild(card);
+  }
+
+  // ── 선택 ─────────────────────────────────────────────
+  function toggleSelect(idx) {
+    const pos = selectedList.indexOf(idx);
+    if (pos !== -1) {
+      selectedList.splice(pos, 1);
+      document.querySelector(`.book-card[data-idx="${idx}"]`)?.classList.remove('selected');
+      refreshBadges(); // 번호 재정렬
+    } else {
+      selectedList.push(idx);
+      const card = document.querySelector(`.book-card[data-idx="${idx}"]`);
+      if (card) {
+        card.classList.add('selected');
+        card.querySelector('.sel-badge').textContent = selectedList.length;
+      }
+    }
+    updateUI();
+    if (detailIdx === idx) updateDetailSelBtn();
+  }
+
+  function clearSel() {
+    selectedList = [];
+    document.querySelectorAll('.book-card.selected').forEach(c => c.classList.remove('selected'));
+    updateUI();
+    if (detailIdx >= 0) updateDetailSelBtn();
+  }
+
+  // 선택 해제 후 번호 재정렬
+  function refreshBadges() {
+    selectedList.forEach((idx, i) => {
+      const badge = document.querySelector(`.book-card[data-idx="${idx}"] .sel-badge`);
+      if (badge) badge.textContent = i + 1;
+    });
+  }
+
+  function updateUI() {
+    const n = selectedList.length;
+    document.getElementById('selCount').textContent = `선택: ${n}개`;
+    document.getElementById('clearBtn').disabled = n === 0;
+    document.getElementById('saveBtn').disabled  = n === 0;
+    document.getElementById('printBtn').disabled = n === 0;
+  }
+
+  // ── 상세 모달 ─────────────────────────────────────────
+  const LANG_MAP = { ko:'한국어', en:'영어', ja:'일본어', zh:'중국어', fr:'프랑스어', de:'독일어', es:'스페인어' };
+
+  function openDetail(idx) {
+    detailIdx = idx;
+    const item = books[idx];
+    const v    = item.volumeInfo;
+
+    // 표지
+    const coverWrap = document.getElementById('detailCoverWrap');
+    const rawImg    = getRawImg(v);
+    const coverUrl  = proxyUrl(rawImg);
+    coverWrap.innerHTML = coverUrl
+      ? `<img src="${coverUrl}" alt="${escHtml(v.title||'')}">`
+      : `<div class="no-cover">${escHtml(v.title||'제목 없음')}</div>`;
+
+    set('detailTitle',    v.title || '제목 없음');
+    set('detailSubtitle', v.subtitle || '');
+    set('detailAuthors',  v.authors?.join(', ') || '—');
+    set('detailPublisher',v.publisher || '—');
+    set('detailDate',     v.publishedDate || '—');
+    set('detailPages',    v.pageCount ? `${v.pageCount}쪽` : '—');
+    set('detailLang',     LANG_MAP[v.language] || v.language || '—');
+
+    // ISBN
+    const isbn = (v.industryIdentifiers || []).map(x => `${x.type.replace('ISBN_','ISBN-')}: ${x.identifier}`).join(' / ');
+    set('detailIsbn', isbn || '—');
+
+    // Google Books 링크
+    const linkEl = document.getElementById('detailLink');
+    if (v.infoLink || item.selfLink) {
+      linkEl.innerHTML = `<a href="${v.infoLink || '#'}" target="_blank" rel="noopener">Google Books에서 보기 ↗</a>`;
+    } else {
+      linkEl.textContent = '—';
+    }
+
+    // 카테고리
+    const catRow  = document.getElementById('detailCatRow');
+    const catList = document.getElementById('detailCategories');
+    if (v.categories?.length) {
+      catList.innerHTML = v.categories.map(c => `<span class="tag">${escHtml(c)}</span>`).join('');
+      catRow.style.display = 'flex';
+    } else {
+      catRow.style.display = 'none';
+    }
+
+    // 설명
+    const descWrap = document.getElementById('descWrap');
+    const descEl   = document.getElementById('detailDesc');
+    if (v.description) {
+      descEl.textContent = v.description;
+      descEl.classList.add('collapsed');
+      document.getElementById('descMoreBtn').textContent = '더 보기 ▾';
+      descWrap.style.display = 'block';
+    } else {
+      descWrap.style.display = 'none';
+    }
+
+    updateDetailSelBtn();
+    document.getElementById('detailModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function updateDetailSelBtn() {
+    const btn = document.getElementById('detailSelBtn');
+    if (selectedList.includes(detailIdx)) {
+      btn.textContent = '✓ 선택됨 (해제)';
+      btn.classList.add('selected');
+    } else {
+      btn.textContent = '+ 선택 추가';
+      btn.classList.remove('selected');
+    }
+  }
+
+  function toggleDetailSel() {
+    toggleSelect(detailIdx);
+  }
+
+  function closeDetail() {
+    document.getElementById('detailModal').classList.remove('show');
+    document.body.style.overflow = '';
+    detailIdx = -1;
+  }
+
+  function onModalBg(e) {
+    if (e.target === document.getElementById('detailModal')) closeDetail();
+  }
+
+  function toggleDesc() {
+    const el  = document.getElementById('detailDesc');
+    const btn = document.getElementById('descMoreBtn');
+    const collapsed = el.classList.toggle('collapsed');
+    btn.textContent = collapsed ? '더 보기 ▾' : '접기 ▴';
+  }
+
+  function set(id, text) {
+    document.getElementById(id).textContent = text;
+  }
+
+  // ── 이미지 URL ────────────────────────────────────────
+  function getRawImg(info) {
+    const l = info.imageLinks || {};
+    return l.extraLarge || l.large || l.medium || l.small || l.thumbnail || l.smallThumbnail || null;
+  }
+
+  function hiResUrl(raw, size) {
+    if (!raw) return null;
+    // 네이버/쇼핑 이미지는 Google Books 전용 fife 파라미터 불필요
+    if (raw.includes('pstatic.net') || raw.includes('naver')) {
+      return raw.replace('http://', 'https://');
+    }
+    return raw
+      .replace('http://', 'https://')
+      .replace(/zoom=\d/, 'zoom=0')
+      .replace('&edge=curl', '')
+      + `&fife=w${size}`;
+  }
+
+  function proxyUrl(raw)      { const u = hiResUrl(raw, 1200); return u ? '/api/image-proxy?url=' + encodeURIComponent(u) : null; }
+  function proxyUrlPrint(raw) { const u = hiResUrl(raw, 2000); return u ? '/api/image-proxy?url=' + encodeURIComponent(u) : null; }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Canvas 변환 ───────────────────────────────────────
+  function mmToPx(mm) { return Math.round(mm * 3.7795275591); }
+
+  function getSize() {
+    const val = document.getElementById('sizeSelect').value;
+    const [w, h] = val.split('x').map(Number);
+    return { wMm: w, hMm: h, wPx: mmToPx(w), hPx: mmToPx(h) };
+  }
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload  = () => resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+
+  async function bookToCanvas(item, size) {
+    const info   = item.volumeInfo;
+    const cover  = proxyUrlPrint(getRawImg(info));
+    const canvas = document.createElement('canvas');
+    const DPI_SCALE = 3.125;
+    canvas.width  = Math.round(size.wPx * DPI_SCALE);
+    canvas.height = Math.round(size.hPx * DPI_SCALE);
+    const ctx = canvas.getContext('2d');
+    if (cover) {
+      try { ctx.drawImage(await loadImage(cover), 0, 0, canvas.width, canvas.height); }
+      catch { drawFallback(ctx, info.title || '?', canvas.width, canvas.height); }
+    } else {
+      drawFallback(ctx, info.title || '?', canvas.width, canvas.height);
+    }
+    return canvas;
+  }
+
+  function drawFallback(ctx, title, w, h) {
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, '#667eea'); grad.addColorStop(1, '#764ba2');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = 'white';
+    ctx.font = `bold ${Math.round(w * 0.07)}px sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    wrapText(ctx, title, w/2, h/2, w*0.8, w*0.1);
+  }
+
+  function wrapText(ctx, text, x, y, maxW, lineH) {
+    const words = text.split(' ');
+    let line = '';
+    const lines = [];
+    for (const w of words) {
+      const test = line + w + ' ';
+      if (ctx.measureText(test).width > maxW && line) { lines.push(line.trim()); line = w + ' '; }
+      else line = test;
+    }
+    if (line) lines.push(line.trim());
+    const startY = y - (lines.length - 1) * lineH / 2;
+    lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineH));
+  }
+
+  // ── JPG 저장 ──────────────────────────────────────────
+  async function saveJpgs() {
+    const size = getSize(), indices = [...selectedList];
+    showProgress(0, indices.length);
+    for (let i = 0; i < indices.length; i++) {
+      const item   = books[indices[i]];
+      const canvas = await bookToCanvas(item, size);
+      const title  = (item.volumeInfo.title || 'book').replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 80);
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/jpeg', 0.95);
+      a.download = `${title}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      updateProgress(i + 1, indices.length);
+      await new Promise(r => setTimeout(r, 400));
+    }
+    hideProgress();
+  }
+
+  // ── 인쇄 ──────────────────────────────────────────────
+  async function printCovers() {
+    const size = getSize(), indices = [...selectedList];
+    showProgress(0, indices.length);
+    const area = document.getElementById('printArea');
+    area.innerHTML = '';
+    let style = document.getElementById('dynPrintStyle');
+    if (!style) { style = document.createElement('style'); style.id = 'dynPrintStyle'; document.head.appendChild(style); }
+    style.textContent = `@media print { @page { size: ${size.wMm}mm ${size.hMm}mm; margin: 0; } .print-sheet img { width: ${size.wMm}mm; height: ${size.hMm}mm; display: block; } }`;
+    for (let i = 0; i < indices.length; i++) {
+      const canvas = await bookToCanvas(books[indices[i]], size);
+      const sheet  = document.createElement('div');
+      sheet.className = 'print-sheet';
+      const img = document.createElement('img');
+      img.src = canvas.toDataURL('image/jpeg', 0.95);
+      sheet.appendChild(img);
+      area.appendChild(sheet);
+      updateProgress(i + 1, indices.length);
+    }
+    hideProgress();
+    setTimeout(() => { window.print(); setTimeout(() => { area.innerHTML = ''; }, 2000); }, 200);
+  }
+
+  // ── 진행 모달 ─────────────────────────────────────────
+  function showProgress(cur, total) { document.getElementById('progressWrap').classList.add('show'); updateProgress(cur, total); }
+  function updateProgress(cur, total) {
+    document.getElementById('progressText').textContent = `이미지 처리 중... (${cur}/${total})`;
+    document.getElementById('progressFill').style.width = `${Math.round(cur/total*100)}%`;
+  }
+  function hideProgress() { document.getElementById('progressWrap').classList.remove('show'); }
+
+  // ESC 키로 모달 닫기
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
+</script>
+</body>
+</html>

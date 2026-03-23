@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(start C:\\\\Vibe\\\\0302\\\\index.html)",
+      "Bash(curl -s \"http://localhost:3001/api/naver-books?q=파이썬&display=2\")"
+    ]
+  }
+}

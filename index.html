@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>회원가입</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .page { display: none; width: 100%; justify-content: center; align-items: center; min-height: 100vh; }
+    .page.active { display: flex; }
+
+    .main-box {
+      background: white;
+      border-radius: 16px;
+      padding: 60px 50px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    .main-box h1 { font-size: 28px; margin-bottom: 12px; color: #222; }
+    .main-box p  { color: #888; margin-bottom: 32px; }
+
+    .form-box {
+      background: white;
+      border-radius: 16px;
+      padding: 40px 44px;
+      width: 480px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    .form-box h2 { font-size: 22px; margin-bottom: 28px; color: #222; text-align: center; }
+
+    .field { margin-bottom: 18px; }
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 6px;
+    }
+    .field input,
+    .field select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border 0.2s;
+    }
+    .field input:focus,
+    .field select:focus { border-color: #4f7ef8; }
+
+    .field .error {
+      font-size: 12px;
+      color: #e74c3c;
+      margin-top: 4px;
+      display: none;
+    }
+
+    .birth-row { display: flex; gap: 8px; }
+    .birth-row select { flex: 1; }
+
+    .gender-row { display: flex; gap: 16px; }
+    .gender-row label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: normal;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-primary { background: #4f7ef8; color: white; }
+    .btn-primary:hover { background: #3a66d4; }
+    .btn-secondary { background: #eee; color: #444; margin-top: 10px; }
+    .btn-secondary:hover { background: #ddd; }
+
+    .server-msg {
+      text-align: center;
+      font-size: 13px;
+      margin-bottom: 14px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      display: none;
+    }
+    .server-msg.success { background: #e6f4ea; color: #2d7a3a; display: block; }
+    .server-msg.fail    { background: #fdecea; color: #c0392b; display: block; }
+  </style>
+</head>
+<body>
+
+  <!-- 메인 페이지 -->
+  <div class="page active" id="mainPage">
+    <div class="main-box">
+      <h1>환영합니다!</h1>
+      <p>원하는 서비스를 선택해주세요.</p>
+      <div style="display:flex; flex-direction:column; gap:12px; align-items:center;">
+        <button class="btn btn-primary" style="width:200px" onclick="goToSignup()">회원가입</button>
+        <a href="/books.html" class="btn btn-primary" style="width:200px; text-decoration:none; display:inline-block; text-align:center;">📚 책 표지 인쇄</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 회원가입 페이지 -->
+  <div class="page" id="signupPage">
+    <div class="form-box">
+      <h2>회원가입</h2>
+
+      <div class="server-msg" id="serverMsg"></div>
+
+      <div class="field">
+        <label>이름</label>
+        <input type="text" id="name" placeholder="이름을 입력하세요" oninput="validateName()">
+        <div class="error" id="nameError">이름에는 숫자를 포함할 수 없습니다.</div>
+      </div>
+
+      <div class="field">
+        <label>성별</label>
+        <div class="gender-row">
+          <label><input type="radio" name="gender" value="남성"> 남성</label>
+          <label><input type="radio" name="gender" value="여성"> 여성</label>
+          <label><input type="radio" name="gender" value="기타"> 기타</label>
+        </div>
+        <div class="error" id="genderError">성별을 선택해주세요.</div>
+      </div>
+
+      <div class="field">
+        <label>생년월일</label>
+        <div class="birth-row">
+          <select id="birthYear"><option value="">년도</option></select>
+          <select id="birthMonth"><option value="">월</option></select>
+          <select id="birthDay"><option value="">일</option></select>
+        </div>
+        <div class="error" id="birthError">생년월일을 모두 선택해주세요.</div>
+      </div>
+
+      <div class="field">
+        <label>아이디</label>
+        <input type="text" id="userId" placeholder="아이디를 입력하세요">
+        <div class="error" id="userIdError">아이디를 입력해주세요.</div>
+      </div>
+
+      <div class="field">
+        <label>비밀번호</label>
+        <input type="password" id="password" placeholder="비밀번호를 입력하세요">
+        <div class="error" id="passwordError">비밀번호를 입력해주세요.</div>
+      </div>
+
+      <div class="field">
+        <label>이메일 주소</label>
+        <input type="email" id="email" placeholder="example@email.com">
+        <div class="error" id="emailError">올바른 이메일 주소를 입력해주세요.</div>
+      </div>
+
+      <button class="btn btn-primary" onclick="submitForm()">가입 완료</button>
+      <button class="btn btn-secondary" onclick="goToMain()">뒤로 가기</button>
+    </div>
+  </div>
+
+  <script>
+    // 년도, 월, 일 채우기
+    const yearSel  = document.getElementById('birthYear');
+    const monthSel = document.getElementById('birthMonth');
+    const daySel   = document.getElementById('birthDay');
+
+    const currentYear = new Date().getFullYear();
+    for (let y = currentYear; y >= 1900; y--) {
+      yearSel.innerHTML += `<option value="${y}">${y}년</option>`;
+    }
+    for (let m = 1; m <= 12; m++) {
+      monthSel.innerHTML += `<option value="${m}">${m}월</option>`;
+    }
+    function updateDays() {
+      const y = parseInt(yearSel.value) || 2000;
+      const m = parseInt(monthSel.value) || 1;
+      const max = new Date(y, m, 0).getDate();
+      const prev = daySel.value;
+      daySel.innerHTML = '<option value="">일</option>';
+      for (let d = 1; d <= max; d++) {
+        daySel.innerHTML += `<option value="${d}"${d == prev ? ' selected' : ''}>${d}일</option>`;
+      }
+    }
+    yearSel.addEventListener('change', updateDays);
+    monthSel.addEventListener('change', updateDays);
+    updateDays();
+
+    function goToSignup() {
+      document.getElementById('mainPage').classList.remove('active');
+      document.getElementById('signupPage').classList.add('active');
+    }
+    function goToMain() {
+      document.getElementById('signupPage').classList.remove('active');
+      document.getElementById('mainPage').classList.add('active');
+      document.getElementById('serverMsg').className = 'server-msg';
+    }
+
+    function validateName() {
+      const val = document.getElementById('name').value;
+      document.getElementById('nameError').style.display = /\d/.test(val) ? 'block' : 'none';
+    }
+
+    function showError(id, show) {
+      document.getElementById(id).style.display = show ? 'block' : 'none';
+    }
+
+    async function submitForm() {
+      let valid = true;
+
+      const name = document.getElementById('name').value.trim();
+      if (!name || /\d/.test(name)) { showError('nameError', true); valid = false; }
+      else showError('nameError', false);
+
+      const gender = document.querySelector('input[name="gender"]:checked');
+      if (!gender) { showError('genderError', true); valid = false; }
+      else showError('genderError', false);
+
+      const y = yearSel.value, mo = monthSel.value, d = daySel.value;
+      if (!y || !mo || !d) { showError('birthError', true); valid = false; }
+      else showError('birthError', false);
+
+      const userId = document.getElementById('userId').value.trim();
+      if (!userId) { showError('userIdError', true); valid = false; }
+      else showError('userIdError', false);
+
+      const password = document.getElementById('password').value;
+      if (!password) { showError('passwordError', true); valid = false; }
+      else showError('passwordError', false);
+
+      const email = document.getElementById('email').value.trim();
+      const emailReg = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email || !emailReg.test(email)) { showError('emailError', true); valid = false; }
+      else showError('emailError', false);
+
+      if (!valid) return;
+
+      const birth = `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+
+      try {
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, gender: gender.value, birth, userId, password, email })
+        });
+        const data = await res.json();
+        const msgEl = document.getElementById('serverMsg');
+        msgEl.textContent = data.message;
+        msgEl.className = 'server-msg ' + (data.success ? 'success' : 'fail');
+      } catch (e) {
+        const msgEl = document.getElementById('serverMsg');
+        msgEl.textContent = '서버에 연결할 수 없습니다.';
+        msgEl.className = 'server-msg fail';
+      }
+    }
+  </script>
+</body>
+</html>
