@@ -1558,6 +1558,24 @@
       hideProgress();
     }
     setTimeout(() => { window.print(); setTimeout(() => { area.innerHTML = ''; }, 2000); }, 200);
+
+    // 인쇄 기록 저장
+    try {
+      await fetch('/api/print-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          print_type: mode,
+          books: items.map(c => ({
+            title:     c.book.title     || '',
+            author:    c.book.author    || '',
+            isbn:      c.book.isbn      || '',
+            publisher: c.book.publisher || '',
+            cover_url: c.book.cover     || c.book.thumbnail || ''
+          }))
+        })
+      });
+    } catch(e) { /* 기록 실패는 무시 */ }
   }
 
   // ── 진행 모달 ─────────────────────────────────────────

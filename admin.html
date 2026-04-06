@@ -141,6 +141,7 @@
       <div class="nav-item active" onclick="switchTab('tabDashboard', this)">📊 대시보드</div>
       <div class="nav-item" onclick="switchTab('tabUsers', this)">👥 회원 목록</div>
       <div class="nav-item" onclick="switchTab('tabLogs', this)">📋 접속 기록</div>
+      <div class="nav-item" onclick="switchTab('tabPrintLogs', this)">🖨️ 인쇄 기록</div>
     </div>
     <div class="content">
 
@@ -223,6 +224,30 @@
         </div>
       </div>
 
+      <!-- 인쇄 기록 -->
+      <div id="tabPrintLogs" class="tab-content">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>인쇄 기록</h3>
+            <div class="actions">
+              <div class="filter-bar">
+                <input type="text" id="printLogSearch" placeholder="사용자·책 제목 검색" oninput="filterPrintLogs()">
+                <select id="printLogLimit" onchange="loadPrintLogs()">
+                  <option value="200">200건</option>
+                  <option value="500">500건</option>
+                  <option value="1000">1000건</option>
+                </select>
+              </div>
+              <button class="btn btn-blue" onclick="loadPrintLogs()">새로고침</button>
+            </div>
+          </div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>시각</th><th>사용자</th><th>책 제목</th><th>저자</th><th>ISBN</th><th>출판사</th><th>인쇄 방식</th></tr></thead>
+            <tbody id="printLogTable"><tr><td colspan="7" class="server-msg">로딩 중...</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -237,8 +262,9 @@
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById(id).classList.add('active');
     el.classList.add('active');
-    if (id === 'tabUsers') loadUsers();
-    if (id === 'tabLogs')  loadLogs();
+    if (id === 'tabUsers')     loadUsers();
+    if (id === 'tabLogs')      loadLogs();
+    if (id === 'tabPrintLogs') loadPrintLogs();
   }
 
   // ── 관리자 로그인/로그아웃 ───────────────────────────
@@ -359,6 +385,39 @@
         <td>${esc(l.ip||'-')}</td>
         <td>${l.success ? '<span class="badge badge-success">성공</span>' : '<span class="badge badge-fail">실패</span>'}</td>
         <td style="color:#999;font-size:12px">${esc(l.message||'')}</td>
+      </tr>`).join('');
+  }
+
+  // ── 인쇄 기록 ─────────────────────────────────────────
+  let allPrintLogs = [];
+
+  async function loadPrintLogs() {
+    const limit = document.getElementById('printLogLimit').value;
+    allPrintLogs = await fetch(`/api/admin/print-logs?limit=${limit}`).then(r => r.json());
+    filterPrintLogs();
+  }
+
+  function filterPrintLogs() {
+    const q = document.getElementById('printLogSearch').value.toLowerCase();
+    const filtered = allPrintLogs.filter(l =>
+      !q || (l.user_login||'').toLowerCase().includes(q) || (l.book_title||'').toLowerCase().includes(q)
+    );
+    renderPrintLogs(filtered);
+  }
+
+  function renderPrintLogs(list) {
+    const tbody = document.getElementById('printLogTable');
+    if (!list.length) { tbody.innerHTML = '<tr><td colspan="7" class="server-msg">기록이 없습니다.</td></tr>'; return; }
+    const modeLabel = { front:'앞면', full:'전체(양면)', back:'뒷면' };
+    tbody.innerHTML = list.map(l => `
+      <tr>
+        <td>${esc(l.printed_at)}</td>
+        <td>${esc(l.user_login||'-')}</td>
+        <td>${esc(l.book_title||'-')}</td>
+        <td>${esc(l.book_author||'-')}</td>
+        <td style="font-size:11px;color:#999">${esc(l.book_isbn||'-')}</td>
+        <td>${esc(l.book_publisher||'-')}</td>
+        <td><span class="badge badge-local">${esc(modeLabel[l.print_type]||l.print_type||'-')}</span></td>
       </tr>`).join('');
   }
 

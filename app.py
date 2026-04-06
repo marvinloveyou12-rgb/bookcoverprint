@@ -93,6 +93,20 @@ def init_db():
             logged_at  TEXT DEFAULT (datetime('now', 'localtime'))
         )
     ''')
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS print_logs (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_db_id      INTEGER NOT NULL,
+            user_login      TEXT,
+            book_title      TEXT,
+            book_author     TEXT,
+            book_isbn       TEXT,
+            book_publisher  TEXT,
+            book_cover_url  TEXT,
+            print_type      TEXT,
+            printed_at      TEXT DEFAULT (datetime('now', 'localtime'))
+        )
+    ''')
     # 기존 users 테이블에 oauth 컬럼이 없으면 추가
     cols = [r[1] for r in db.execute("PRAGMA table_info(users)").fetchall()]
     if 'oauth_provider' not in cols:
@@ -467,6 +481,18 @@ def admin_delete_user(uid):
     return jsonify(success=True)
 
 
+@app.route('/api/admin/print-logs')
+@admin_required
+def admin_print_logs():
+    limit = min(int(request.args.get('limit', 200)), 1000)
+    db    = get_db()
+    rows  = db.execute(
+        'SELECT * FROM print_logs ORDER BY id DESC LIMIT ?', (limit,)
+    ).fetchall()
+    db.close()
+    return jsonify([dict(r) for r in rows])
+
+
 @app.route('/api/admin/stats')
 @admin_required
 def admin_stats():
@@ -482,6 +508,46 @@ def admin_stats():
     db.close()
     return jsonify(total_users=total_users, total_logs=total_logs,
                    today_logins=today_logins, failed_today=failed_today)
+
+
+# ── 인쇄 기록 API ────────────────────────────────────────
+
+@app.route('/api/print-log', methods=['POST'])
+def print_log():
+    user = get_current_user()
+    if not user:
+        return jsonify(success=False, message='로그인 필요'), 401
+    data  = request.get_json() or {}
+    books = data.get('books', [])
+    ptype = data.get('print_type', 'front')
+    db = get_db()
+    for b in books:
+        db.execute(
+            '''INSERT INTO print_logs
+               (user_db_id, user_login, book_title, book_author, book_isbn,
+                book_publisher, book_cover_url, print_type)
+               VALUES (?,?,?,?,?,?,?,?)''',
+            (user['id'], user['user_id'],
+             b.get('title',''), b.get('author',''), b.get('isbn',''),
+             b.get('publisher',''), b.get('cover_url',''), ptype)
+        )
+    db.commit()
+    db.close()
+    return jsonify(success=True)
+
+
+@app.route('/api/my-prints')
+def my_prints():
+    user = get_current_user()
+    if not user:
+        return jsonify(error='로그인 필요'), 401
+    db   = get_db()
+    rows = db.execute(
+        'SELECT * FROM print_logs WHERE user_db_id=? ORDER BY id DESC LIMIT 200',
+        (user['id'],)
+    ).fetchall()
+    db.close()
+    return jsonify([dict(r) for r in rows])
 
 
 # ── 기존 API ──────────────────────────────────────────────
