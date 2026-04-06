@@ -181,7 +181,7 @@
       user-select: none;
     }
     .book-card:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.14); }
-    .book-card.selected { outline: 3px solid #4f7ef8; }
+    .book-card.in-cart { outline: 3px solid #e67e22; }
 
     /* 선택 배지 (순번 숫자) */
     .book-card .sel-badge {
@@ -200,7 +200,7 @@
       z-index: 2;
       line-height: 1;
     }
-    .book-card.selected .sel-badge { display: flex; }
+    .book-card.in-cart .sel-badge { display: flex; }
 
     /* 빠른 선택 버튼 (호버 시) */
     .book-card .quick-sel {
@@ -220,9 +220,9 @@
       z-index: 2;
     }
     .book-card:hover .quick-sel { opacity: 1; }
-    .book-card.selected .quick-sel {
-      background: #4f7ef8;
-      border-color: #4f7ef8;
+    .book-card.in-cart .quick-sel {
+      background: #e67e22;
+      border-color: #e67e22;
       color: white;
       opacity: 1;
     }
@@ -467,7 +467,8 @@
 
     /* ── 인쇄 ── */
     @media print {
-      header, .adv-panel, #detailModal, #progressWrap, .pagination, .result-info { display: none !important; }
+      header, .adv-panel, #detailModal, #progressWrap, .pagination, .result-info,
+      .cart-toggle-btn, .cart-overlay, .cart-panel { display: none !important; }
       body { background: white; }
       main { padding: 0; }
       .book-card { display: none !important; }
@@ -475,6 +476,132 @@
       .grid { display: none; }
     }
     .print-sheet { display: none; }
+
+    /* ── 장바구니 토글 버튼 ── */
+    .cart-toggle-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 14px;
+      background: #fff3e0; color: #e67e22;
+      border: 1.5px solid #e67e22;
+      border-radius: 8px; font-size: 13px; font-weight: 600;
+      cursor: pointer; white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .cart-toggle-btn:hover { background: #ffe0b2; }
+    .cart-badge-num {
+      background: #e67e22; color: white;
+      border-radius: 10px; padding: 1px 7px;
+      font-size: 11px; display: none;
+    }
+
+    /* ── 장바구니 패널 ── */
+    .cart-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.3); z-index: 500;
+    }
+    .cart-overlay.show { display: block; }
+
+    .cart-panel {
+      position: fixed; top: 0; right: -380px; width: 360px; height: 100vh;
+      background: white; z-index: 501;
+      box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+      display: flex; flex-direction: column;
+      transition: right 0.3s ease;
+    }
+    .cart-panel.open { right: 0; }
+
+    .cart-header {
+      padding: 16px 20px; border-bottom: 1px solid #eee;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .cart-header h3 { font-size: 16px; color: #222; font-weight: 700; }
+    .cart-close-btn {
+      background: #f0f0f0; border: none; border-radius: 50%;
+      width: 30px; height: 30px; font-size: 16px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; color: #666;
+    }
+    .cart-close-btn:hover { background: #e0e0e0; color: #222; }
+
+    .cart-subtoolbar {
+      padding: 8px 16px; border-bottom: 1px solid #f0f0f0;
+      display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+    }
+    .cart-info-text { flex: 1; font-size: 12px; color: #999; }
+    .cart-subtoolbar .btn { padding: 5px 10px; font-size: 11px; }
+
+    .cart-list {
+      flex: 1; overflow-y: auto;
+      padding: 10px 12px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .cart-empty {
+      text-align: center; color: #bbb; padding: 50px 0;
+      font-size: 14px; line-height: 2;
+    }
+    .cart-empty small { font-size: 12px; }
+
+    .cart-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border-radius: 10px;
+      border: 1.5px solid #eee; background: #fafafa;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .cart-item.checked { border-color: #b3c9ff; background: #f0f4ff; }
+
+    .cart-item-check {
+      flex-shrink: 0; width: 16px; height: 16px;
+      accent-color: #4f7ef8; cursor: pointer;
+    }
+    .cart-item-thumb {
+      flex-shrink: 0; width: 40px; height: 56px;
+      object-fit: cover; border-radius: 4px; background: #e8e8e8;
+    }
+    .cart-item-thumb-fallback {
+      flex-shrink: 0; width: 40px; height: 56px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 7px; text-align: center; padding: 3px; line-height: 1.3;
+    }
+    .cart-item-meta { flex: 1; min-width: 0; }
+    .cart-item-title {
+      font-size: 12px; font-weight: 600; line-height: 1.4; color: #222;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .cart-item-author { font-size: 11px; color: #999; margin-top: 2px; }
+
+    .cart-item-del {
+      flex-shrink: 0; background: none; border: none;
+      color: #ccc; font-size: 20px; line-height: 1;
+      cursor: pointer; padding: 0 2px;
+    }
+    .cart-item-del:hover { color: #e74c3c; }
+
+    .cart-size-row {
+      padding: 10px 16px; border-top: 1px solid #f0f0f0; flex-shrink: 0;
+    }
+    .cart-size-row select {
+      width: 100%; padding: 7px 10px;
+      border: 1px solid #ddd; border-radius: 8px;
+      font-size: 13px; outline: none; background: white;
+    }
+    .cart-footer {
+      padding: 12px 16px; border-top: 1px solid #eee;
+      display: flex; gap: 8px; flex-shrink: 0;
+    }
+    .cart-footer .btn { flex: 1; padding: 10px; font-size: 13px; }
+    .cart-option-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 16px 0; font-size: 13px; color: #555;
+    }
+    .cart-option-row label { white-space: nowrap; }
+    .cart-option-row select, .cart-option-row input {
+      flex: 1; padding: 5px 8px; border: 1px solid #ddd;
+      border-radius: 6px; font-size: 13px; outline: none; background: white;
+    }
+    .cart-option-row input[type=number] { flex: none; width: 60px; }
+    .cart-option-row span { color: #888; }
   </style>
 </head>
 <body>
@@ -507,17 +634,7 @@
       <input type="checkbox" id="coverOnly" checked onchange="applyFilter()">
       표지 있는 책만
     </label>
-    <select id="sizeSelect">
-      <option value="130x188">46판 (130×188mm)</option>
-      <option value="148x210" selected>국판 / A5 (148×210mm)</option>
-      <option value="153x225">신국판 (153×225mm)</option>
-      <option value="182x257">B5 (182×257mm)</option>
-      <option value="210x297">A4 (210×297mm)</option>
-    </select>
-    <span class="sel-count" id="selCount">선택: 0개</span>
-    <button class="btn btn-gray" id="clearBtn" onclick="clearSel()" disabled>선택 초기화</button>
-    <button class="btn btn-orange" id="saveBtn"  onclick="saveJpgs()"    disabled>JPG 저장</button>
-    <button class="btn btn-green"  id="printBtn" onclick="printCovers()" disabled>인쇄</button>
+    <button class="cart-toggle-btn" onclick="toggleCart()">🛒 장바구니 <span class="cart-badge-num" id="cartBadgeNum"></span></button>
   </div>
 </header>
 
@@ -603,14 +720,23 @@
   const PER_PAGE = 40;
   const MAX_API  = 1000;
 
-  let books        = [];
-  let totalItems   = 0;
-  let currentPage  = 1;
-  let lastQuery    = '';
-  let lastOrder    = 'newest';
-  let lastLang     = 'ko';
-  let detailIdx    = -1;
-  let selectedList = []; // 선택 순서 보존 배열
+  let books      = [];
+  let totalItems = 0;
+  let currentPage = 1;
+  let lastQuery  = '';
+  let lastOrder  = 'newest';
+  let lastLang   = 'ko';
+  let detailIdx  = -1;
+
+  // ── 장바구니 상태
+  let cart        = [];          // [{id, key, book}]
+  let cartPrintSet = new Set();  // 인쇄 선택된 id
+  let cartIdCnt   = 0;
+
+  function getBookKey(book) {
+    const v = book.volumeInfo;
+    return (v.title || '') + '|' + (v.authors || []).join(',');
+  }
 
   // ── 고급 검색 토글 ────────────────────────────────────
   function toggleAdv() {
@@ -653,12 +779,10 @@
     const lang  = document.getElementById('langSelect').value;
     if (!q) return;
 
-    lastQuery    = q;
-    lastOrder    = order;
-    lastLang     = lang;
-    currentPage  = 1;
-    selectedList = [];
-    updateUI();
+    lastQuery   = q;
+    lastOrder   = order;
+    lastLang    = lang;
+    currentPage = 1;
 
     await loadPage(1);
   }
@@ -666,8 +790,6 @@
   // ── 표지 필터 재적용 (필터 토글 시) ─────────────────
   function applyFilter() {
     document.getElementById('grid').innerHTML = '';
-    selectedList = [];
-    updateUI();
     const coverOnly = document.getElementById('coverOnly').checked;
     books.forEach((item, i) => {
       if (coverOnly && !getRawImg(item.volumeInfo)) return;
@@ -746,7 +868,6 @@
   // ── 페이지 로드 ──────────────────────────────────────
   async function loadPage(page) {
     currentPage = page;
-    selectedList = [];
     document.getElementById('grid').innerHTML       = '';
     document.getElementById('pagination').innerHTML = '';
     document.getElementById('resultInfo').style.display = 'none';
@@ -883,14 +1004,16 @@
     const authors = info.authors?.join(', ') || '저자 미상';
     const year    = info.publishedDate?.slice(0, 4) || '';
     const cover   = proxyUrl(getRawImg(info));
+    const key     = getBookKey(item);
+    const inCart  = !!cart.find(c => c.key === key);
 
     const card = document.createElement('div');
-    card.className   = 'book-card';
+    card.className   = 'book-card' + (inCart ? ' in-cart' : '');
     card.dataset.idx = idx;
 
     card.innerHTML = `
-      <div class="sel-badge"></div>
-      <div class="quick-sel" title="선택">✓</div>
+      <div class="sel-badge">✓</div>
+      <div class="quick-sel" title="장바구니에 담기">🛒</div>
       ${cover
         ? `<img src="${cover}" alt="${escHtml(title)}" loading="lazy">`
         : `<div class="no-img">${escHtml(title)}</div>`}
@@ -900,56 +1023,127 @@
         ${year ? `<div class="year">${year}</div>` : ''}
       </div>`;
 
-    // 클릭 영역 분리: quick-sel → 선택 토글 / 나머지 → 상세 보기
+    // 클릭 영역 분리: quick-sel → 장바구니 담기 / 나머지 → 상세 보기
     card.querySelector('.quick-sel').addEventListener('click', e => {
       e.stopPropagation();
-      toggleSelect(idx);
+      toggleCartBook(idx);
     });
     card.addEventListener('click', () => openDetail(idx));
 
     document.getElementById('grid').appendChild(card);
   }
 
-  // ── 선택 ─────────────────────────────────────────────
-  function toggleSelect(idx) {
-    const pos = selectedList.indexOf(idx);
+  // ── 장바구니 담기/빼기 ────────────────────────────────
+  function toggleCartBook(idx) {
+    const book = books[idx];
+    const key  = getBookKey(book);
+    const pos  = cart.findIndex(c => c.key === key);
+
     if (pos !== -1) {
-      selectedList.splice(pos, 1);
-      document.querySelector(`.book-card[data-idx="${idx}"]`)?.classList.remove('selected');
-      refreshBadges(); // 번호 재정렬
+      const id = cart[pos].id;
+      cart.splice(pos, 1);
+      cartPrintSet.delete(id);
+      document.querySelector(`.book-card[data-idx="${idx}"]`)?.classList.remove('in-cart');
     } else {
-      selectedList.push(idx);
-      const card = document.querySelector(`.book-card[data-idx="${idx}"]`);
-      if (card) {
-        card.classList.add('selected');
-        card.querySelector('.sel-badge').textContent = selectedList.length;
-      }
+      const id = ++cartIdCnt;
+      cart.push({ id, key, book });
+      cartPrintSet.add(id);
+      document.querySelector(`.book-card[data-idx="${idx}"]`)?.classList.add('in-cart');
     }
-    updateUI();
+    updateCartBadge();
+    renderCartList();
     if (detailIdx === idx) updateDetailSelBtn();
   }
 
-  function clearSel() {
-    selectedList = [];
-    document.querySelectorAll('.book-card.selected').forEach(c => c.classList.remove('selected'));
-    updateUI();
-    if (detailIdx >= 0) updateDetailSelBtn();
+  function updateCartBadge() {
+    const badge = document.getElementById('cartBadgeNum');
+    badge.textContent = cart.length;
+    badge.style.display = cart.length ? 'inline' : 'none';
   }
 
-  // 선택 해제 후 번호 재정렬
-  function refreshBadges() {
-    selectedList.forEach((idx, i) => {
-      const badge = document.querySelector(`.book-card[data-idx="${idx}"] .sel-badge`);
-      if (badge) badge.textContent = i + 1;
-    });
+  // ── 장바구니 패널 토글 ────────────────────────────────
+  function toggleCart() {
+    document.getElementById('cartPanel').classList.toggle('open');
+    document.getElementById('cartOverlay').classList.toggle('show');
   }
 
-  function updateUI() {
-    const n = selectedList.length;
-    document.getElementById('selCount').textContent = `선택: ${n}개`;
-    document.getElementById('clearBtn').disabled = n === 0;
-    document.getElementById('saveBtn').disabled  = n === 0;
-    document.getElementById('printBtn').disabled = n === 0;
+  // ── 장바구니 리스트 렌더 ──────────────────────────────
+  function renderCartList() {
+    const list = document.getElementById('cartList');
+    if (!cart.length) {
+      list.innerHTML = '<div class="cart-empty">📚<br>담은 책이 없습니다<br><small>검색 결과에서 🛒 버튼을 눌러 담아보세요</small></div>';
+      updateCartFooter();
+      return;
+    }
+    list.innerHTML = cart.map(({id, book}) => {
+      const v      = book.volumeInfo;
+      const title  = v.title || '제목 없음';
+      const author = (v.authors || []).join(', ') || '저자 미상';
+      const cover  = proxyUrl(getRawImg(v));
+      const checked = cartPrintSet.has(id);
+      return `<div class="cart-item${checked ? ' checked' : ''}" data-id="${id}">
+        <input type="checkbox" class="cart-item-check" ${checked ? 'checked' : ''} onchange="toggleCartPrint(${id})">
+        ${cover
+          ? `<img class="cart-item-thumb" src="${cover}" alt="${escHtml(title)}" loading="lazy">`
+          : `<div class="cart-item-thumb-fallback">${escHtml(title)}</div>`}
+        <div class="cart-item-meta">
+          <div class="cart-item-title">${escHtml(title)}</div>
+          <div class="cart-item-author">${escHtml(author)}</div>
+        </div>
+        <button class="cart-item-del" onclick="removeCartItem(${id})" title="제거">×</button>
+      </div>`;
+    }).join('');
+    updateCartFooter();
+  }
+
+  function toggleCartPrint(id) {
+    if (cartPrintSet.has(id)) cartPrintSet.delete(id);
+    else cartPrintSet.add(id);
+    const item = document.querySelector(`.cart-item[data-id="${id}"]`);
+    if (item) item.classList.toggle('checked', cartPrintSet.has(id));
+    updateCartFooter();
+  }
+
+  function cartSelectAll() {
+    cart.forEach(c => cartPrintSet.add(c.id));
+    renderCartList();
+  }
+
+  function cartDeselectAll() {
+    cartPrintSet.clear();
+    renderCartList();
+  }
+
+  function removeCartItem(id) {
+    const removed = cart.find(c => c.id === id);
+    cart = cart.filter(c => c.id !== id);
+    cartPrintSet.delete(id);
+    // 카드 UI 업데이트
+    if (removed) {
+      document.querySelectorAll('.book-card').forEach(card => {
+        const idx = parseInt(card.dataset.idx);
+        if (!isNaN(idx) && books[idx] && getBookKey(books[idx]) === removed.key) {
+          card.classList.remove('in-cart');
+        }
+      });
+    }
+    updateCartBadge();
+    renderCartList();
+  }
+
+  function cartClearAll() {
+    cart = [];
+    cartPrintSet.clear();
+    document.querySelectorAll('.book-card.in-cart').forEach(c => c.classList.remove('in-cart'));
+    updateCartBadge();
+    renderCartList();
+  }
+
+  function updateCartFooter() {
+    const sel = cartPrintSet.size;
+    document.getElementById('cartInfoText').textContent = `${cart.length}권 담음 · ${sel}권 선택됨`;
+    document.getElementById('cartSaveBtn').disabled  = sel === 0;
+    document.getElementById('cartPrintBtn').disabled = sel === 0;
   }
 
   // ── 상세 모달 ─────────────────────────────────────────
@@ -1017,17 +1211,19 @@
 
   function updateDetailSelBtn() {
     const btn = document.getElementById('detailSelBtn');
-    if (selectedList.includes(detailIdx)) {
-      btn.textContent = '✓ 선택됨 (해제)';
+    const key = detailIdx >= 0 ? getBookKey(books[detailIdx]) : '';
+    const inCart = !!cart.find(c => c.key === key);
+    if (inCart) {
+      btn.textContent = '✓ 담김 (빼기)';
       btn.classList.add('selected');
     } else {
-      btn.textContent = '+ 선택 추가';
+      btn.textContent = '🛒 장바구니에 담기';
       btn.classList.remove('selected');
     }
   }
 
   function toggleDetailSel() {
-    toggleSelect(detailIdx);
+    toggleCartBook(detailIdx);
   }
 
   function closeDetail() {
@@ -1081,7 +1277,7 @@
   function mmToPx(mm) { return Math.round(mm * 3.7795275591); }
 
   function getSize() {
-    const val = document.getElementById('sizeSelect').value;
+    const val = document.getElementById('cartSizeSelect').value;
     const [w, h] = val.split('x').map(Number);
     return { wMm: w, hMm: h, wPx: mmToPx(w), hPx: mmToPx(h) };
   }
@@ -1090,8 +1286,9 @@
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      img.onload  = () => resolve(img);
-      img.onerror = reject;
+      const timer = setTimeout(() => reject(new Error('timeout')), 15000);
+      img.onload  = () => { clearTimeout(timer); resolve(img); };
+      img.onerror = () => { clearTimeout(timer); reject(new Error('load error')); };
       img.src = src;
     });
   }
@@ -1123,6 +1320,171 @@
     wrapText(ctx, title, w/2, h/2, w*0.8, w*0.1);
   }
 
+  // 특정 위치에 앞표지 fallback 그리기
+  function drawFallbackAt(ctx, title, x, y, w, h) {
+    ctx.save();
+    ctx.translate(x, y);
+    drawFallback(ctx, title, w, h);
+    ctx.restore();
+  }
+
+  // 책등 그리기
+  function drawSpine(ctx, info, x, y, w, h) {
+    ctx.save();
+    ctx.translate(x, y);
+    const grad = ctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, '#4a5568'); grad.addColorStop(1, '#2d3748');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+    // 구분선
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w, 0); ctx.lineTo(w, h); ctx.stroke();
+    // 제목 (아래→위 방향 세로쓰기)
+    const title = info.title || '';
+    const author = (info.authors || []).join(', ');
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.rotate(-Math.PI / 2);
+    const fontSize = Math.min(w * 0.55, Math.round(h * 0.035));
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    const maxW = h * 0.7;
+    // 제목
+    let titleText = title;
+    while (ctx.measureText(titleText).width > maxW && titleText.length > 2)
+      titleText = titleText.slice(0, -1);
+    if (titleText !== title) titleText = titleText.slice(0, -1) + '…';
+    ctx.fillText(titleText, 0, author ? -fontSize * 0.8 : 0);
+    // 저자
+    if (author) {
+      ctx.font = `${Math.round(fontSize * 0.75)}px sans-serif`;
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      let authorText = author;
+      while (ctx.measureText(authorText).width > maxW && authorText.length > 2)
+        authorText = authorText.slice(0, -1);
+      if (authorText !== author) authorText = authorText.slice(0, -1) + '…';
+      ctx.fillText(authorText, 0, fontSize * 0.9);
+    }
+    ctx.restore();
+    ctx.restore();
+  }
+
+  // 뒤표지 그리기
+  function drawBackCover(ctx, info, x, y, w, h) {
+    ctx.save();
+    ctx.translate(x, y);
+    const grad = ctx.createLinearGradient(w, h, 0, 0);
+    grad.addColorStop(0, '#667eea'); grad.addColorStop(1, '#764ba2');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+    const pad = w * 0.08;
+    const usableW = w - pad * 2;
+    // 제목
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    const titleSize = Math.round(w * 0.065);
+    ctx.font = `bold ${titleSize}px sans-serif`;
+    const titleLines = breakText(ctx, info.title || '', usableW);
+    let curY = pad;
+    titleLines.forEach(line => {
+      ctx.fillText(line, pad, curY);
+      curY += titleSize * 1.3;
+    });
+    // 저자
+    const author = (info.authors || []).join(', ');
+    if (author) {
+      curY += titleSize * 0.3;
+      ctx.font = `${Math.round(titleSize * 0.75)}px sans-serif`;
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.fillText(author, pad, curY);
+      curY += titleSize * 1.2;
+    }
+    // 구분선
+    curY += pad * 0.3;
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(pad, curY); ctx.lineTo(w - pad, curY); ctx.stroke();
+    curY += pad * 0.5;
+    // 설명문
+    const desc = info.description || '';
+    if (desc) {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      const descSize = Math.round(titleSize * 0.58);
+      ctx.font = `${descSize}px sans-serif`;
+      ctx.textBaseline = 'top';
+      const descLines = breakText(ctx, desc, usableW);
+      const maxLines = Math.floor((h - curY - pad * 2) / (descSize * 1.5)) - 2;
+      descLines.slice(0, maxLines).forEach(line => {
+        ctx.fillText(line, pad, curY);
+        curY += descSize * 1.5;
+      });
+    }
+    // 출판사 (하단)
+    if (info.publisher) {
+      ctx.font = `${Math.round(titleSize * 0.6)}px sans-serif`;
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(info.publisher, w - pad, h - pad);
+    }
+    ctx.restore();
+  }
+
+  function breakText(ctx, text, maxW) {
+    const words = text.split(' ');
+    const lines = [];
+    let line = '';
+    for (const w of words) {
+      const test = line + w + ' ';
+      if (ctx.measureText(test).width > maxW && line) { lines.push(line.trim()); line = w + ' '; }
+      else line = test;
+    }
+    if (line.trim()) lines.push(line.trim());
+    return lines;
+  }
+
+  // 전체표지 캔버스 생성 (뒤+등+앞)
+  async function bookToCanvasFull(item, size, spineMm) {
+    const info = item.volumeInfo;
+    const cover = proxyUrlPrint(getRawImg(info));
+    const DPI_SCALE = 3.125;
+    const fW = Math.round(size.wPx * DPI_SCALE);
+    const fH = Math.round(size.hPx * DPI_SCALE);
+    const sW = Math.round(mmToPx(spineMm) * DPI_SCALE);
+    const canvas = document.createElement('canvas');
+    canvas.width  = fW * 2 + sW;
+    canvas.height = fH;
+    const ctx = canvas.getContext('2d');
+    // 뒤표지
+    drawBackCover(ctx, info, 0, 0, fW, fH);
+    // 책등
+    drawSpine(ctx, info, fW, 0, sW, fH);
+    // 앞표지
+    if (cover) {
+      try {
+        const img = await loadImage(cover);
+        ctx.drawImage(img, fW + sW, 0, fW, fH);
+      } catch {
+        drawFallbackAt(ctx, info.title || '?', fW + sW, 0, fW, fH);
+      }
+    } else {
+      drawFallbackAt(ctx, info.title || '?', fW + sW, 0, fW, fH);
+    }
+    return canvas;
+  }
+
+  function toggleSpineRow() {
+    const mode = document.getElementById('cartModeSelect').value;
+    document.getElementById('cartSpineRow').style.display = mode === 'full' ? 'flex' : 'none';
+  }
+  function getPrintMode() { return document.getElementById('cartModeSelect').value; }
+  function getSpineMm()   { return parseFloat(document.getElementById('cartSpineMm').value) || 20; }
+
   function wrapText(ctx, text, x, y, maxW, lineH) {
     const words = text.split(' ');
     let line = '';
@@ -1137,46 +1499,64 @@
     lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineH));
   }
 
-  // ── JPG 저장 ──────────────────────────────────────────
-  async function saveJpgs() {
-    const size = getSize(), indices = [...selectedList];
-    showProgress(0, indices.length);
-    for (let i = 0; i < indices.length; i++) {
-      const item   = books[indices[i]];
-      const canvas = await bookToCanvas(item, size);
-      const title  = (item.volumeInfo.title || 'book').replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 80);
+  // ── JPG 저장 (장바구니) ───────────────────────────────
+  async function cartSaveJpgs() {
+    const size   = getSize();
+    const mode   = getPrintMode();
+    const spine  = getSpineMm();
+    const items  = cart.filter(c => cartPrintSet.has(c.id));
+    showProgress(0, items.length);
+    for (let i = 0; i < items.length; i++) {
+      const canvas = mode === 'full'
+        ? await bookToCanvasFull(items[i].book, size, spine)
+        : await bookToCanvas(items[i].book, size);
+      const suffix = mode === 'full' ? '_전체표지' : '';
+      const title  = (items[i].book.volumeInfo.title || 'book').replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 80);
       const a = document.createElement('a');
       a.href = canvas.toDataURL('image/jpeg', 0.95);
-      a.download = `${title}.jpg`;
+      a.download = `${title}${suffix}.jpg`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      updateProgress(i + 1, indices.length);
+      updateProgress(i + 1, items.length);
       await new Promise(r => setTimeout(r, 400));
     }
     hideProgress();
   }
 
-  // ── 인쇄 ──────────────────────────────────────────────
-  async function printCovers() {
-    const size = getSize(), indices = [...selectedList];
-    showProgress(0, indices.length);
+  // ── 인쇄 (장바구니) ───────────────────────────────────
+  async function cartPrint() {
+    const size  = getSize();
+    const mode  = getPrintMode();
+    const spine = getSpineMm();
+    const items = cart.filter(c => cartPrintSet.has(c.id));
+    if (items.length === 0) return;
+    showProgress(0, items.length);
     const area = document.getElementById('printArea');
     area.innerHTML = '';
     let style = document.getElementById('dynPrintStyle');
     if (!style) { style = document.createElement('style'); style.id = 'dynPrintStyle'; document.head.appendChild(style); }
-    style.textContent = `@media print { @page { size: ${size.wMm}mm ${size.hMm}mm; margin: 0; } .print-sheet img { width: ${size.wMm}mm; height: ${size.hMm}mm; display: block; } }`;
-    for (let i = 0; i < indices.length; i++) {
-      const canvas = await bookToCanvas(books[indices[i]], size);
-      const sheet  = document.createElement('div');
-      sheet.className = 'print-sheet';
-      const img = document.createElement('img');
-      img.src = canvas.toDataURL('image/jpeg', 0.95);
-      sheet.appendChild(img);
-      area.appendChild(sheet);
-      updateProgress(i + 1, indices.length);
+    const pageW = mode === 'full' ? size.wMm * 2 + spine : size.wMm;
+    const pageH = size.hMm;
+    style.textContent = `@media print { @page { size: ${pageW}mm ${pageH}mm; margin: 0; } .print-sheet img { width: ${pageW}mm; height: ${pageH}mm; display: block; } }`;
+    try {
+      for (let i = 0; i < items.length; i++) {
+        const canvas = mode === 'full'
+          ? await bookToCanvasFull(items[i].book, size, spine)
+          : await bookToCanvas(items[i].book, size);
+        const sheet = document.createElement('div');
+        sheet.className = 'print-sheet';
+        const img = document.createElement('img');
+        img.src = canvas.toDataURL('image/jpeg', 0.95);
+        sheet.appendChild(img);
+        area.appendChild(sheet);
+        updateProgress(i + 1, items.length);
+      }
+    } catch(e) {
+      console.error('인쇄 처리 오류:', e);
+    } finally {
+      hideProgress();
     }
-    hideProgress();
     setTimeout(() => { window.print(); setTimeout(() => { area.innerHTML = ''; }, 2000); }, 200);
   }
 
@@ -1191,5 +1571,50 @@
   // ESC 키로 모달 닫기
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
 </script>
+
+<!-- ── 장바구니 오버레이 ── -->
+<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+
+<!-- ── 장바구니 패널 ── -->
+<div class="cart-panel" id="cartPanel">
+  <div class="cart-header">
+    <h3>🛒 장바구니</h3>
+    <button class="cart-close-btn" onclick="toggleCart()">✕</button>
+  </div>
+  <div class="cart-subtoolbar">
+    <span class="cart-info-text" id="cartInfoText">0권 담음 · 0권 선택됨</span>
+    <button class="btn btn-gray" onclick="cartSelectAll()">전체선택</button>
+    <button class="btn btn-gray" onclick="cartDeselectAll()">전체해제</button>
+    <button class="btn btn-gray" onclick="cartClearAll()">비우기</button>
+  </div>
+  <div class="cart-list" id="cartList">
+    <div class="cart-empty">📚<br>담은 책이 없습니다<br><small>검색 결과에서 🛒 버튼을 눌러 담아보세요</small></div>
+  </div>
+  <div class="cart-size-row">
+    <select id="cartSizeSelect">
+      <option value="130x188">46판 (130×188mm)</option>
+      <option value="148x210" selected>국판 / A5 (148×210mm)</option>
+      <option value="153x225">신국판 (153×225mm)</option>
+      <option value="182x257">B5 (182×257mm)</option>
+      <option value="210x297">A4 (210×297mm)</option>
+    </select>
+  </div>
+  <div class="cart-option-row">
+    <label>인쇄 방식</label>
+    <select id="cartModeSelect" onchange="toggleSpineRow()">
+      <option value="front">앞표지만</option>
+      <option value="full">전체표지 (앞+등+뒤)</option>
+    </select>
+  </div>
+  <div class="cart-option-row" id="cartSpineRow" style="display:none">
+    <label>책등 두께</label>
+    <input type="number" id="cartSpineMm" value="20" min="1" max="150">
+    <span>mm</span>
+  </div>
+  <div class="cart-footer">
+    <button class="btn btn-orange" id="cartSaveBtn"  onclick="cartSaveJpgs()" disabled>JPG 저장</button>
+    <button class="btn btn-green"  id="cartPrintBtn" onclick="cartPrint()"    disabled>인쇄</button>
+  </div>
+</div>
 </body>
 </html>

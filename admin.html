@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>관리자 패널</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; }
+
+    /* ── 로그인 화면 ── */
+    #loginWrap {
+      display: flex; justify-content: center; align-items: center; min-height: 100vh;
+    }
+    .login-card {
+      background: white; border-radius: 16px; padding: 44px 48px; width: 360px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1); text-align: center;
+    }
+    .login-card h2 { font-size: 22px; margin-bottom: 6px; color: #222; }
+    .login-card p  { font-size: 13px; color: #888; margin-bottom: 28px; }
+    .login-card input {
+      width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px;
+      font-size: 14px; outline: none; margin-bottom: 12px;
+    }
+    .login-card input:focus { border-color: #4f7ef8; }
+
+    /* ── 메인 패널 ── */
+    #adminWrap { display: none; }
+
+    .top-bar {
+      background: #1a1f36; color: white;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; height: 56px;
+    }
+    .top-bar h1 { font-size: 17px; font-weight: 700; }
+    .top-bar-right { display: flex; align-items: center; gap: 14px; font-size: 13px; color: #aab; }
+
+    .main { display: flex; min-height: calc(100vh - 56px); }
+
+    .sidebar {
+      width: 200px; background: #242840; flex-shrink: 0;
+      display: flex; flex-direction: column; padding: 16px 0;
+    }
+    .nav-item {
+      padding: 12px 24px; color: #aab; font-size: 14px; cursor: pointer;
+      border-left: 3px solid transparent; transition: all 0.15s;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.06); color: white; }
+    .nav-item.active { background: rgba(79,126,248,0.15); color: #4f7ef8; border-left-color: #4f7ef8; }
+
+    .content { flex: 1; padding: 28px; overflow: auto; }
+
+    /* ── 통계 카드 ── */
+    .stats-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 28px; }
+    .stat-card {
+      background: white; border-radius: 12px; padding: 20px 24px; flex: 1; min-width: 140px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    .stat-card .label { font-size: 12px; color: #888; margin-bottom: 8px; }
+    .stat-card .value { font-size: 28px; font-weight: 700; color: #222; }
+    .stat-card .value.blue   { color: #4f7ef8; }
+    .stat-card .value.green  { color: #27ae60; }
+    .stat-card .value.orange { color: #e67e22; }
+    .stat-card .value.red    { color: #e74c3c; }
+
+    /* ── 테이블 ── */
+    .panel { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); overflow: hidden; }
+    .panel-header {
+      padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel-header h3 { font-size: 15px; color: #222; font-weight: 700; }
+    .panel-header .actions { display: flex; gap: 8px; align-items: center; }
+
+    .tbl-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #f8f9fb; color: #666; font-weight: 600; padding: 10px 14px; text-align: left; white-space: nowrap; border-bottom: 1px solid #eee; }
+    td { padding: 10px 14px; border-bottom: 1px solid #f5f5f5; color: #333; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafbff; }
+
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 10px;
+      font-size: 11px; font-weight: 600;
+    }
+    .badge-local  { background: #e8f4fd; color: #2980b9; }
+    .badge-google { background: #fce8e8; color: #c0392b; }
+    .badge-naver  { background: #e8f8ef; color: #0a7a3a; }
+    .badge-kakao  { background: #fffbe6; color: #a07800; }
+    .badge-success { background: #e6f4ea; color: #2d7a3a; }
+    .badge-fail    { background: #fdecea; color: #c0392b; }
+
+    /* ── 버튼 ── */
+    .btn { padding: 7px 14px; border: none; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn-blue  { background: #4f7ef8; color: white; }
+    .btn-blue:hover  { background: #3a66d4; }
+    .btn-red   { background: #e74c3c; color: white; }
+    .btn-red:hover   { background: #c0392b; }
+    .btn-gray  { background: #eee; color: #444; }
+    .btn-gray:hover  { background: #ddd; }
+    .btn-sm    { padding: 4px 10px; font-size: 12px; }
+
+    .server-msg { color: #888; text-align: center; padding: 40px; }
+
+    /* ── 검색/필터 ── */
+    .filter-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .filter-bar input, .filter-bar select {
+      padding: 7px 10px; border: 1px solid #ddd; border-radius: 7px;
+      font-size: 13px; outline: none;
+    }
+    .filter-bar input:focus, .filter-bar select:focus { border-color: #4f7ef8; }
+
+    /* 탭 */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- ── 관리자 로그인 ── -->
+<div id="loginWrap">
+  <div class="login-card">
+    <h2>🔒 관리자 패널</h2>
+    <p>관리자 비밀번호를 입력하세요</p>
+    <div id="loginMsg" style="font-size:13px;color:#e74c3c;margin-bottom:10px;display:none"></div>
+    <input type="password" id="adminPw" placeholder="비밀번호" onkeydown="if(event.key==='Enter')doAdminLogin()">
+    <button class="btn btn-blue" style="width:100%;padding:10px" onclick="doAdminLogin()">로그인</button>
+  </div>
+</div>
+
+<!-- ── 관리자 패널 ── -->
+<div id="adminWrap">
+  <div class="top-bar">
+    <h1>⚙️ 관리자 패널</h1>
+    <div class="top-bar-right">
+      <span id="topStats"></span>
+      <button class="btn btn-gray" style="padding:5px 12px;font-size:12px" onclick="doAdminLogout()">로그아웃</button>
+    </div>
+  </div>
+  <div class="main">
+    <div class="sidebar">
+      <div class="nav-item active" onclick="switchTab('tabDashboard', this)">📊 대시보드</div>
+      <div class="nav-item" onclick="switchTab('tabUsers', this)">👥 회원 목록</div>
+      <div class="nav-item" onclick="switchTab('tabLogs', this)">📋 접속 기록</div>
+    </div>
+    <div class="content">
+
+      <!-- 대시보드 -->
+      <div id="tabDashboard" class="tab-content active">
+        <div class="stats-row">
+          <div class="stat-card"><div class="label">전체 회원</div><div class="value blue" id="sTotalUsers">-</div></div>
+          <div class="stat-card"><div class="label">오늘 로그인</div><div class="value green" id="sTodayLogins">-</div></div>
+          <div class="stat-card"><div class="label">오늘 실패</div><div class="value red" id="sFailedToday">-</div></div>
+          <div class="stat-card"><div class="label">전체 로그</div><div class="value orange" id="sTotalLogs">-</div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h3>최근 접속 기록 (10건)</h3></div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>시각</th><th>사용자</th><th>방식</th><th>IP</th><th>결과</th></tr></thead>
+            <tbody id="recentLogs"><tr><td colspan="5" class="server-msg">로딩 중...</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- 회원 목록 -->
+      <div id="tabUsers" class="tab-content">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>회원 목록</h3>
+            <div class="actions">
+              <div class="filter-bar">
+                <input type="text" id="userSearch" placeholder="이름·아이디·이메일 검색" oninput="filterUsers()">
+                <select id="userProviderFilter" onchange="filterUsers()">
+                  <option value="">전체</option>
+                  <option value="local">일반</option>
+                  <option value="google">구글</option>
+                  <option value="naver">네이버</option>
+                  <option value="kakao">카카오</option>
+                </select>
+              </div>
+              <button class="btn btn-blue" onclick="loadUsers()">새로고침</button>
+            </div>
+          </div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>ID</th><th>이름</th><th>아이디</th><th>이메일</th><th>성별</th><th>생년월일</th><th>가입방식</th><th>가입일</th><th>관리</th></tr></thead>
+            <tbody id="userTable"><tr><td colspan="9" class="server-msg">로딩 중...</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- 접속 기록 -->
+      <div id="tabLogs" class="tab-content">
+        <div class="panel">
+          <div class="panel-header">
+            <h3>접속 기록</h3>
+            <div class="actions">
+              <div class="filter-bar">
+                <input type="text" id="logSearch" placeholder="사용자 검색" oninput="filterLogs()">
+                <select id="logTypeFilter" onchange="filterLogs()">
+                  <option value="">전체 방식</option>
+                  <option value="local">일반</option>
+                  <option value="google">구글</option>
+                  <option value="naver">네이버</option>
+                  <option value="kakao">카카오</option>
+                </select>
+                <select id="logResultFilter" onchange="filterLogs()">
+                  <option value="">전체 결과</option>
+                  <option value="1">성공</option>
+                  <option value="0">실패</option>
+                </select>
+                <select id="logLimit" onchange="loadLogs()">
+                  <option value="100">100건</option>
+                  <option value="300">300건</option>
+                  <option value="1000">1000건</option>
+                </select>
+              </div>
+              <button class="btn btn-blue" onclick="loadLogs()">새로고침</button>
+            </div>
+          </div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>시각</th><th>사용자</th><th>로그인 방식</th><th>IP</th><th>결과</th><th>메시지</th></tr></thead>
+            <tbody id="logTable"><tr><td colspan="6" class="server-msg">로딩 중...</td></tr></tbody>
+          </table></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  let allUsers = [];
+  let allLogs  = [];
+
+  // ── 탭 전환 ──────────────────────────────────────────
+  function switchTab(id, el) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    el.classList.add('active');
+    if (id === 'tabUsers') loadUsers();
+    if (id === 'tabLogs')  loadLogs();
+  }
+
+  // ── 관리자 로그인/로그아웃 ───────────────────────────
+  async function doAdminLogin() {
+    const pw  = document.getElementById('adminPw').value;
+    const res = await fetch('/api/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pw}) });
+    const d   = await res.json();
+    if (d.success) {
+      document.getElementById('loginWrap').style.display = 'none';
+      document.getElementById('adminWrap').style.display = 'block';
+      loadStats();
+      loadRecentLogs();
+    } else {
+      const el = document.getElementById('loginMsg');
+      el.textContent = d.message || '비밀번호가 올바르지 않습니다.';
+      el.style.display = 'block';
+    }
+  }
+
+  async function doAdminLogout() {
+    await fetch('/api/admin/logout', {method:'POST'});
+    location.reload();
+  }
+
+  // ── 통계 ─────────────────────────────────────────────
+  async function loadStats() {
+    const d = await fetch('/api/admin/stats').then(r => r.json());
+    document.getElementById('sTotalUsers').textContent  = d.total_users;
+    document.getElementById('sTodayLogins').textContent = d.today_logins;
+    document.getElementById('sFailedToday').textContent = d.failed_today;
+    document.getElementById('sTotalLogs').textContent   = d.total_logs;
+    document.getElementById('topStats').textContent     = `전체 ${d.total_users}명 · 오늘 ${d.today_logins}회 로그인`;
+  }
+
+  async function loadRecentLogs() {
+    const logs = await fetch('/api/admin/logs?limit=10').then(r => r.json());
+    const tbody = document.getElementById('recentLogs');
+    if (!logs.length) { tbody.innerHTML = '<tr><td colspan="5" class="server-msg">기록 없음</td></tr>'; return; }
+    tbody.innerHTML = logs.map(l => `
+      <tr>
+        <td>${l.logged_at}</td>
+        <td>${esc(l.user_login || '-')}</td>
+        <td>${badgeProvider(l.login_type)}</td>
+        <td>${esc(l.ip || '-')}</td>
+        <td>${l.success ? '<span class="badge badge-success">성공</span>' : '<span class="badge badge-fail">실패</span>'}</td>
+      </tr>`).join('');
+  }
+
+  // ── 회원 목록 ─────────────────────────────────────────
+  async function loadUsers() {
+    allUsers = await fetch('/api/admin/users').then(r => r.json());
+    renderUsers(allUsers);
+  }
+
+  function filterUsers() {
+    const q  = document.getElementById('userSearch').value.toLowerCase();
+    const pf = document.getElementById('userProviderFilter').value;
+    const filtered = allUsers.filter(u => {
+      const matchQ = !q || [u.name, u.user_id, u.email].some(v => (v||'').toLowerCase().includes(q));
+      const matchP = !pf || (pf === 'local' ? !u.oauth_provider : u.oauth_provider === pf);
+      return matchQ && matchP;
+    });
+    renderUsers(filtered);
+  }
+
+  function renderUsers(list) {
+    const tbody = document.getElementById('userTable');
+    if (!list.length) { tbody.innerHTML = '<tr><td colspan="9" class="server-msg">회원이 없습니다.</td></tr>'; return; }
+    tbody.innerHTML = list.map(u => `
+      <tr>
+        <td>${u.id}</td>
+        <td>${esc(u.name)}</td>
+        <td>${esc(u.user_id)}</td>
+        <td>${esc(u.email)}</td>
+        <td>${esc(u.gender||'-')}</td>
+        <td>${esc(u.birth||'-')}</td>
+        <td>${badgeProvider(u.oauth_provider||'local')}</td>
+        <td>${esc(u.created_at||'')}</td>
+        <td><button class="btn btn-red btn-sm" onclick="deleteUser(${u.id},'${esc(u.name)}')">삭제</button></td>
+      </tr>`).join('');
+  }
+
+  async function deleteUser(id, name) {
+    if (!confirm(`정말 "${name}" 회원을 삭제하시겠습니까?`)) return;
+    const res = await fetch(`/api/admin/users/${id}`, {method:'DELETE'});
+    const d   = await res.json();
+    if (d.success) { await loadUsers(); loadStats(); }
+  }
+
+  // ── 접속 기록 ─────────────────────────────────────────
+  async function loadLogs() {
+    const limit = document.getElementById('logLimit').value;
+    allLogs = await fetch(`/api/admin/logs?limit=${limit}`).then(r => r.json());
+    filterLogs();
+  }
+
+  function filterLogs() {
+    const q  = document.getElementById('logSearch').value.toLowerCase();
+    const tf = document.getElementById('logTypeFilter').value;
+    const rf = document.getElementById('logResultFilter').value;
+    const filtered = allLogs.filter(l => {
+      const matchQ = !q || (l.user_login||'').toLowerCase().includes(q);
+      const matchT = !tf || l.login_type === tf;
+      const matchR = rf === '' || String(l.success) === rf;
+      return matchQ && matchT && matchR;
+    });
+    renderLogs(filtered);
+  }
+
+  function renderLogs(list) {
+    const tbody = document.getElementById('logTable');
+    if (!list.length) { tbody.innerHTML = '<tr><td colspan="6" class="server-msg">기록이 없습니다.</td></tr>'; return; }
+    tbody.innerHTML = list.map(l => `
+      <tr>
+        <td>${esc(l.logged_at)}</td>
+        <td>${esc(l.user_login||'-')}</td>
+        <td>${badgeProvider(l.login_type)}</td>
+        <td>${esc(l.ip||'-')}</td>
+        <td>${l.success ? '<span class="badge badge-success">성공</span>' : '<span class="badge badge-fail">실패</span>'}</td>
+        <td style="color:#999;font-size:12px">${esc(l.message||'')}</td>
+      </tr>`).join('');
+  }
+
+  // ── 유틸 ──────────────────────────────────────────────
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function badgeProvider(p) {
+    const map = { local:'일반', google:'구글', naver:'네이버', kakao:'카카오' };
+    return `<span class="badge badge-${p||'local'}">${map[p]||esc(p)||'일반'}</span>`;
+  }
+
+  // ── 초기: 이미 로그인된 관리자인지 확인 ──────────────
+  (async () => {
+    const d = await fetch('/api/admin/status').then(r => r.json());
+    if (d.is_admin) {
+      document.getElementById('loginWrap').style.display = 'none';
+      document.getElementById('adminWrap').style.display = 'block';
+      loadStats();
+      loadRecentLogs();
+    }
+  })();
+</script>
+</body>
+</html>
