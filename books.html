@@ -1003,7 +1003,8 @@
     const title   = info.title || '제목 없음';
     const authors = info.authors?.join(', ') || '저자 미상';
     const year    = info.publishedDate?.slice(0, 4) || '';
-    const cover   = hiResUrl(getRawImg(info), 400);
+    const raw = getRawImg(info);
+    const cover = raw ? raw.replace('http://', 'https://') : null;
     const key     = getBookKey(item);
     const inCart  = !!cart.find(c => c.key === key);
 
