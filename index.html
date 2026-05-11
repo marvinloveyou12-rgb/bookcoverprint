@@ -35,6 +35,15 @@
     }
     .search-bar input:focus { border-color: #4f7ef8; }
 
+    .home-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 14px; background: #f5f5f5; color: #444;
+      border-radius: 8px; font-size: 13px; font-weight: 600;
+      text-decoration: none; white-space: nowrap; transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    .home-btn:hover { background: #e0e0e0; }
+
     .toolbar {
       display: flex;
       align-items: center;
@@ -590,6 +599,7 @@
 <!-- ── 헤더 ── -->
 <header>
   <div class="header-row1">
+    <a href="https://marvinloveyou12-rgb.github.io/mbtibooktalk/" class="home-btn" title="MBTI Book Talk 홈으로">🏠 홈</a>
     <h1>📚 책 표지 인쇄</h1>
     <div class="search-bar">
       <input id="searchInput" type="text" placeholder="불리언 검색 가능: 파이썬 AND 머신러닝 NOT 입문"
@@ -693,16 +703,17 @@
 </div>
 
 <script>
-  const PER_PAGE = 40;
-  const MAX_API  = 1000;
+  const PER_PAGE    = 40;
+  const ALADIN_KEY  = 'ttbpopi07062229002';
 
-  let books       = [];
-  let totalItems  = 0;
-  let currentPage = 1;
-  let lastQuery   = '';
-  let lastOrder   = 'newest';
-  let lastLang    = 'ko';
-  let detailIdx   = -1;
+  let books         = [];
+  let totalItems    = 0;
+  let currentPage   = 1;
+  let lastQuery     = '';
+  let lastQueryType = 'Keyword';
+  let lastOrder     = 'newest';
+  let lastLang      = 'ko';
+  let detailIdx     = -1;
 
   let cart         = [];
   let cartPrintSet = new Set();
@@ -721,32 +732,77 @@
     btn.textContent = open ? '고급 ▴' : '고급 ▾';
   }
 
-  function buildQuery() {
-    const main      = document.getElementById('searchInput').value.trim();
-    const author    = document.getElementById('authorInput').value.trim();
-    const publisher = document.getElementById('publisherInput').value.trim();
-    const subject   = document.getElementById('subjectInput').value.trim();
-    const parts = [];
-    if (main) {
-      const q = main
-        .replace(/\s+AND\s+/gi, '+')
-        .replace(/\s+OR\s+/gi,  '|')
-        .replace(/\s+NOT\s+(\S+)/gi, (_, w) => `-${w}`);
-      parts.push(q);
-    }
-    if (author)    parts.push(`inauthor:${author}`);
-    if (publisher) parts.push(`inpublisher:${publisher}`);
-    if (subject)   parts.push(`subject:${subject}`);
-    return parts.join('+') || '';
+  function buildAladinParams() {
+    const main      = (document.getElementById('searchInput')?.value || '').trim();
+    const author    = (document.getElementById('authorInput')?.value || '').trim();
+    const publisher = (document.getElementById('publisherInput')?.value || '').trim();
+    const subject   = (document.getElementById('subjectInput')?.value || '').trim();
+    if (!main && !subject && author && !publisher)
+      return { query: author, queryType: 'Author' };
+    if (!main && !subject && !author && publisher)
+      return { query: publisher, queryType: 'Publisher' };
+    const parts = [main, author, publisher, subject].filter(Boolean);
+    return { query: parts.join(' '), queryType: 'Keyword' };
+  }
+
+  function aladinSearch(query, queryType, page) {
+    return new Promise(resolve => {
+      const cb = '_al_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+      const s  = document.createElement('script');
+      const t  = setTimeout(() => {
+        resolve({ items: [], total: 0 });
+        s.remove();
+        try { delete window[cb]; } catch {}
+      }, 10000);
+      window[cb] = data => {
+        clearTimeout(t); s.remove();
+        try { delete window[cb]; } catch {}
+        const items = (data.item || []).map(b => ({
+          volumeInfo: {
+            title: b.title || '',
+            authors: b.author ? [b.author] : [],
+            publisher: b.publisher || '',
+            publishedDate: (b.pubDate || '').slice(0, 10),
+            description: b.description || '',
+            imageLinks: b.cover ? { thumbnail: b.cover } : {},
+            language: 'ko',
+            industryIdentifiers: b.isbn13
+              ? [{ type: 'ISBN_13', identifier: b.isbn13 }] : [],
+            infoLink: b.link || ''
+          },
+          selfLink: b.link || ''
+        }));
+        resolve({ items, total: Math.min(data.totalResults || 0, 5000) });
+      };
+      s.onerror = () => {
+        clearTimeout(t); resolve({ items: [], total: 0 });
+        try { delete window[cb]; } catch {}
+      };
+      const sort    = lastOrder === 'newest' ? 'PublishTime' : 'Accuracy';
+      const startIdx = (page - 1) * PER_PAGE + 1;
+      s.src = `https://www.aladin.co.kr/ttb/api/ItemSearch.aspx`
+        + `?ttbkey=${ALADIN_KEY}`
+        + `&Query=${encodeURIComponent(query)}`
+        + `&QueryType=${queryType}`
+        + `&MaxResults=${PER_PAGE}`
+        + `&start=${startIdx}`
+        + `&SearchTarget=Book`
+        + `&Sort=${sort}`
+        + `&output=js`
+        + `&Version=20131101`
+        + `&CallBack=${cb}`;
+      document.head.appendChild(s);
+    });
   }
 
   async function searchBooks() {
-    const q = buildQuery();
-    if (!q) return;
-    lastQuery   = q;
-    lastOrder   = document.getElementById('orderSelect').value;
-    lastLang    = document.getElementById('langSelect').value;
-    currentPage = 1;
+    const { query, queryType } = buildAladinParams();
+    if (!query) return;
+    lastQuery     = query;
+    lastQueryType = queryType;
+    lastOrder     = document.getElementById('orderSelect').value;
+    lastLang      = document.getElementById('langSelect').value;
+    currentPage   = 1;
     await loadPage(1);
   }
 
@@ -792,32 +848,16 @@
     document.getElementById('resultInfo').style.display = 'none';
     setStatus('검색 중...');
 
-    const startIndex = (page - 1) * PER_PAGE;
-    const coverOnly  = document.getElementById('coverOnly').checked;
+    const coverOnly = document.getElementById('coverOnly').checked;
 
     try {
-      const res = await fetch(
-        `https://www.googleapis.com/books/v1/volumes`
-        + `?q=${encodeURIComponent(lastQuery)}`
-        + `&maxResults=${PER_PAGE}`
-        + `&startIndex=${startIndex}`
-        + `&orderBy=${lastOrder}`
-        + `&printType=books`
-        + (lastLang ? `&langRestrict=${lastLang}` : '')
-      );
-      const data = await res.json();
-
-      books      = data.items || [];
-      totalItems = Math.min(data.totalItems || 0, MAX_API);
+      const { items, total } = await aladinSearch(lastQuery, lastQueryType, page);
+      books      = items;
+      totalItems = total;
 
       if (!books.length) {
-        setStatus('검색 결과가 없습니다.');
+        setStatus('검색 결과가 없습니다. 다른 검색어를 입력해보세요.');
         return;
-      }
-
-      if (lastOrder === 'relevance') {
-        const terms = extractTerms(lastQuery);
-        books.sort((a, b) => relevanceScore(b, terms) - relevanceScore(a, terms));
       }
 
       setStatus('');
@@ -835,12 +875,13 @@
 
       const info = document.getElementById('resultInfo');
       const coverNote = coverOnly ? ` (표지 ${shown}권 표시)` : '';
-      info.textContent = `총 약 ${totalItems.toLocaleString()}개 · Google Books${coverNote}`;
+      info.textContent = `총 약 ${totalItems.toLocaleString()}개 · Aladin Books${coverNote}`;
       info.style.display = 'block';
 
       renderPagination();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) {
+      console.error(e);
       setStatus('검색 중 오류가 발생했습니다.');
     }
   }
