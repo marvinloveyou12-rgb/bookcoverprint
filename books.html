@@ -1271,8 +1271,8 @@
     const u = raw.replace('http://', 'https://');
     // 알라딘/네이버 이미지는 Google Books 전용 fife 파라미터 불필요
     if (u.includes('aladin.co.kr') || u.includes('pstatic.net') || u.includes('naver')) {
-      // 알라딘: cover200 → cover500 for bigger size
-      return u.replace(/cover(\d+)\.jpg/, size >= 1000 ? 'cover500.jpg' : 'cover200.jpg');
+      // 알라딘: /cover200/ 디렉터리명을 /cover500/으로 교체
+      return u.replace(/\/cover\d+\//, size >= 500 ? '/cover500/' : '/cover200/');
     }
     return u
       .replace(/zoom=\d/, 'zoom=0')
