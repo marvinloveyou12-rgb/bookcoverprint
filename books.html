@@ -766,11 +766,20 @@
   }
 
   // ── 알라딘 JSONP 검색 ─────────────────────────────────
+  let _aladinCbId = 0;
   function aladinSearch(query, queryType, page) {
     return new Promise(resolve => {
-      const cb = '__aladin_cb_' + Date.now();
-      const s  = document.createElement('script');
+      const cb   = 'aladinCb' + (++_aladinCbId);
+      const s    = document.createElement('script');
       const sort = lastOrder === 'newest' ? 'PublishTime' : 'Accuracy';
+
+      const cleanup = () => {
+        if (s.parentNode) s.parentNode.removeChild(s);
+        delete window[cb];
+      };
+
+      const timer = setTimeout(() => { cleanup(); resolve({ items: [], total: 0 }); }, 10000);
+
       s.src = `https://www.aladin.co.kr/ttb/api/ItemSearch.aspx`
         + `?ttbkey=${ALADIN_KEY}`
         + `&Query=${encodeURIComponent(query)}`
@@ -783,15 +792,33 @@
         + `&output=js`
         + `&Version=20131101`
         + `&Callback=${cb}`;
+
       window[cb] = data => {
-        document.head.removeChild(s);
-        delete window[cb];
+        clearTimeout(timer);
+        cleanup();
         const items = (data.item || []).map(normalizeAladin);
         resolve({ items, total: data.totalResults || 0 });
       };
-      s.onerror = () => { document.head.removeChild(s); delete window[cb]; resolve({ items: [], total: 0 }); };
+      s.onerror = () => { clearTimeout(timer); cleanup(); resolve({ items: [], total: 0 }); };
       document.head.appendChild(s);
     });
+  }
+
+  // ── Aladin 실패 시 Google Books 폴백 검색 ────────────
+  async function googleBooksSearch(query, page) {
+    const startIndex = (page - 1) * PER_PAGE;
+    const order      = lastOrder === 'newest' ? 'newest' : 'relevance';
+    const r = await fetch(
+      `https://www.googleapis.com/books/v1/volumes`
+      + `?q=${encodeURIComponent(query)}`
+      + `&maxResults=${PER_PAGE}`
+      + `&startIndex=${startIndex}`
+      + `&orderBy=${order}`
+      + `&printType=books`
+      + `&langRestrict=ko`
+    );
+    const data = await r.json();
+    return { items: data.items || [], total: data.totalItems || 0 };
   }
 
   // ── 알라딘 결과 → volumeInfo 형식 변환 ───────────────
@@ -934,7 +961,19 @@
     const coverOnly = document.getElementById('coverOnly').checked;
 
     try {
-      const { items, total } = await aladinSearch(lastQuery, lastQueryType, page);
+      let { items, total } = await aladinSearch(lastQuery, lastQueryType, page);
+      let source = '알라딘';
+
+      // Aladin 실패 시 Google Books 폴백
+      if (!items.length) {
+        setStatus('알라딘 검색 중...');
+        try {
+          const gb = await googleBooksSearch(lastQuery, page);
+          items  = gb.items;
+          total  = gb.total;
+          source = 'Google Books';
+        } catch {}
+      }
 
       totalItems = Math.min(total, MAX_API);
 
@@ -962,7 +1001,7 @@
 
       const info = document.getElementById('resultInfo');
       const coverNote = coverOnly ? ` (표지 ${shown}권 표시)` : '';
-      info.textContent = `총 약 ${totalItems.toLocaleString()}개 · 알라딘${coverNote}`;
+      info.textContent = `총 약 ${totalItems.toLocaleString()}개 · ${source}${coverNote}`;
       info.style.display = 'block';
 
       renderPagination();
