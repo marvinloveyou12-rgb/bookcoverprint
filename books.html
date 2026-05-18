@@ -719,7 +719,9 @@
 <script>
   const PER_PAGE    = 40;
   const MAX_API     = 1000;
-  const ALADIN_KEY  = 'ttbpopi07062229001';
+  const MBTIBOOKTALK_API = 'https://dongle0516-mbtibooktalk.hf.space';
+  let _cachedSearchResults = null;
+  let _cachedSearchKey = '';
 
   let books       = [];
   let totalItems  = 0;
@@ -765,43 +767,46 @@
     return { query: parts.join(' ') || '', queryType: 'Keyword' };
   }
 
-  // ── 알라딘 JSONP 검색 ─────────────────────────────────
-  let _aladinCbId = 0;
-  function aladinSearch(query, queryType, page) {
-    return new Promise(resolve => {
-      const cb   = 'aladinCb' + (++_aladinCbId);
-      const s    = document.createElement('script');
-      const sort = lastOrder === 'newest' ? 'PublishTime' : 'Accuracy';
+  // ── 백엔드 프록시 검색 (mbtibooktalk HF Space) ────────
+  function normalizeMbtiBook(b) {
+    return {
+      _source: b.source || 'aladin',
+      volumeInfo: {
+        title:       b.title || '',
+        authors:     b.author ? b.author.split(',').map(a => a.trim()).filter(Boolean) : [],
+        publisher:   b.publisher || '',
+        publishedDate: '',
+        description:   '',
+        imageLinks:  b.cover ? { thumbnail: b.cover } : {},
+        industryIdentifiers: b.isbn ? [{ type: 'ISBN_13', identifier: b.isbn }] : [],
+        infoLink:    b.link || '',
+        categories:  [],
+        language:    'ko',
+      }
+    };
+  }
 
-      const cleanup = () => {
-        if (s.parentNode) s.parentNode.removeChild(s);
-        delete window[cb];
-      };
-
-      const timer = setTimeout(() => { cleanup(); resolve({ items: [], total: 0 }); }, 10000);
-
-      s.src = `https://www.aladin.co.kr/ttb/api/ItemSearch.aspx`
-        + `?ttbkey=${ALADIN_KEY}`
-        + `&Query=${encodeURIComponent(query)}`
-        + `&QueryType=${queryType}`
-        + `&MaxResults=${PER_PAGE}`
-        + `&start=${page}`
-        + `&SearchTarget=Book`
-        + `&Sort=${sort}`
-        + `&Cover=Big`
-        + `&output=js`
-        + `&Version=20131101`
-        + `&Callback=${cb}`;
-
-      window[cb] = data => {
-        clearTimeout(timer);
-        cleanup();
-        const items = (data.item || []).map(normalizeAladin);
-        resolve({ items, total: data.totalResults || 0 });
-      };
-      s.onerror = () => { clearTimeout(timer); cleanup(); resolve({ items: [], total: 0 }); };
-      document.head.appendChild(s);
-    });
+  async function backendSearch(query, queryType, page) {
+    const cacheKey = `${query}|${queryType}`;
+    if (_cachedSearchKey === cacheKey && _cachedSearchResults) {
+      const start = (page - 1) * PER_PAGE;
+      return { items: _cachedSearchResults.slice(start, start + PER_PAGE), total: _cachedSearchResults.length };
+    }
+    const ftMap = { 'Title': 'title', 'Author': 'author', 'Publisher': 'publisher', 'Keyword': 'all' };
+    const ft = ftMap[queryType] || 'all';
+    try {
+      const r = await fetch(`${MBTIBOOKTALK_API}/api/book-search?q=${encodeURIComponent(query)}&filter_type=${ft}&max_results=100`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      const all = (data.books || []).map(normalizeMbtiBook);
+      _cachedSearchResults = all;
+      _cachedSearchKey = cacheKey;
+      const start = (page - 1) * PER_PAGE;
+      return { items: all.slice(start, start + PER_PAGE), total: all.length };
+    } catch (e) {
+      console.warn('[backendSearch] failed:', e.message);
+      return { items: [], total: 0 };
+    }
   }
 
   // ── Aladin 실패 시 Google Books 폴백 검색 ────────────
@@ -815,33 +820,12 @@
       + `&startIndex=${startIndex}`
       + `&orderBy=${order}`
       + `&printType=books`
-      + `&langRestrict=ko`
     );
     const data = await r.json();
     return { items: data.items || [], total: data.totalItems || 0 };
   }
 
-  // ── 알라딘 결과 → volumeInfo 형식 변환 ───────────────
-  function normalizeAladin(it) {
-    const pd = (it.pubDate || '').replace(/\./g, '-').slice(0, 10);
-    return {
-      _source: 'aladin',
-      volumeInfo: {
-        title:       (it.title || '').replace(/\s*-.*$/, '').trim(),
-        authors:     (it.author || '').split(',').map(a => a.replace(/\s*\(.*?\)/g, '').trim()).filter(Boolean),
-        publisher:   it.publisher || '',
-        publishedDate: pd,
-        description: it.description || '',
-        imageLinks:  it.cover ? { thumbnail: it.cover.replace('http://', 'https://') } : {},
-        industryIdentifiers: it.isbn13 ? [{ type: 'ISBN_13', identifier: it.isbn13 }] : [],
-        infoLink:    it.link || '',
-        categories:  it.categoryName ? [it.categoryName] : [],
-        language:    'ko',
-      }
-    };
-  }
-
-  // ── 검색 (새 검색) ───────────────────────────────────
+// ── 검색 (새 검색) ───────────────────────────────────
   async function searchBooks() {
     const { query, queryType } = buildAladinParams();
     const order = document.getElementById('orderSelect').value;
@@ -851,6 +835,8 @@
     lastQueryType = queryType;
     lastOrder     = order;
     currentPage   = 1;
+    _cachedSearchResults = null;
+    _cachedSearchKey = '';
 
     await loadPage(1);
   }
@@ -961,12 +947,12 @@
     const coverOnly = document.getElementById('coverOnly').checked;
 
     try {
-      let { items, total } = await aladinSearch(lastQuery, lastQueryType, page);
+      let { items, total } = await backendSearch(lastQuery, lastQueryType, page);
       let source = '알라딘';
 
-      // Aladin 실패 시 Google Books 폴백
+      // 백엔드 실패 시 Google Books 폴백
       if (!items.length) {
-        setStatus('알라딘 검색 중...');
+        setStatus('Google Books 검색 중...');
         try {
           const gb = await googleBooksSearch(lastQuery, page);
           items  = gb.items;
